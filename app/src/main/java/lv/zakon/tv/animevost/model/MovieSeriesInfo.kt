@@ -1,6 +1,6 @@
 package lv.zakon.tv.animevost.model
 
-import lv.zakon.tv.animevost.ui.common.Util
+import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
 import java.io.Serializable
 
 /**
@@ -23,7 +23,7 @@ data class MovieSeriesInfo(
         return "MovieSeries{" +
                 "id='$id'" +
                 ", title='$title'" +
-                ", year='$yearStart'" + Util.ifData (yearEnd) { "-$it" } +
+                ", year='$yearStart'" + yearEnd.ifData("") { "-$it" } +
                 ", pageUrl='$pageUrl'" +
                 ", cardImageUrl='$cardImageUrl'" +
                 '}'

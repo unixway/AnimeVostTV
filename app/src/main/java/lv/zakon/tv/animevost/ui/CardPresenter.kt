@@ -10,6 +10,8 @@ import com.bumptech.glide.Glide
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.ui.common.Util
+import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
+import lv.zakon.tv.animevost.ui.common.Util.ifext.ifc
 import kotlin.properties.Delegates
 
 /**
@@ -41,11 +43,11 @@ class CardPresenter : Presenter() {
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
         val movie = item as MovieSeriesInfo
         val cardView = viewHolder.view as ImageCardView
-        val watchedMark = if (movie.watched) "👁 " else ""
+        val watchedMark = movie.watched.ifc("👁 ", "")
 
         cardView.titleText = watchedMark + movie.title
         cardView.contentText =
-            movie.yearStart.toString() + Util.ifData(movie.yearEnd) { "-$it" } + " " + movie.genres.contentToString()
+            movie.yearStart.toString() + movie.yearEnd.ifData("") { "-$it" } + " " + movie.genres.contentToString()
         cardView.setMainImageDimensions(CARD_WIDTH, CARD_HEIGHT)
         Glide.with(viewHolder.view.context)
             .load(movie.cardImageUrl)

@@ -37,6 +37,7 @@ import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.provider.MovieSeriesInfoEvent
 import lv.zakon.tv.animevost.provider.PlaylistFetchedEvent
+import lv.zakon.tv.animevost.ui.common.Util.ifext.ifc
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -87,7 +88,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onPlaylistEvent(event : PlaylistFetchedEvent) {
         for (entry in event.playlist) {
-            val watchedMark = if (entry.watched) "👁" else ""
+            val watchedMark = entry.watched.ifc("👁", "")
             val action = Action(entry.id, entry.name, watchedMark)
             mActionAdapter.add(action)
         }

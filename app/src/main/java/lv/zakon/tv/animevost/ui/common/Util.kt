@@ -4,9 +4,14 @@ import androidx.fragment.app.FragmentActivity
 
 class Util {
     companion object {
-        @Suppress( "UNCHECKED_CAST")
-        fun <T> getExtra(activity: FragmentActivity, name: String) : T = activity.intent!!.getSerializableExtra(name) as T
+        @Suppress("UNCHECKED_CAST")
+        fun <T> getExtra(activity: FragmentActivity, name: String): T =
+            activity.intent!!.getSerializableExtra(name) as T
 
-        fun <T> ifData(data: T?, act: (T) -> String) : String = if (data == null) "" else act(data)
+    }
+
+    object ifext {
+        inline fun <T, R> T?.ifData(fb: R, block: (T) -> R): R = if (this == null) fb else block(this)
+        fun <R> Boolean.ifc(trueBranch: R, falseBranch: R): R = if (this) trueBranch else falseBranch
     }
 }

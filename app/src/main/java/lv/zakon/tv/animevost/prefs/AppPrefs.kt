@@ -51,7 +51,7 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         }
     }
 
-    private inline fun <KT, VT, V> KotlinDataStoreModel<V>.jsonFlowPref(
+    private fun <KT, VT, V> KotlinDataStoreModel<V>.jsonFlowPref(
         default: Map<KT, VT>,
         key: String? = null,
         deser: JSONDeser<KT, VT>

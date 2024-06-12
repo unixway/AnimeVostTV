@@ -13,6 +13,7 @@ import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
 import lv.zakon.tv.animevost.ui.common.Util
+import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 
 /** Handles video playback with media controls. */
@@ -35,7 +36,7 @@ class PlaybackVideoFragment : VideoSupportFragment() {
         mTransportControlGlue = VideoPlayerGlue(context, playerAdapter)
         mTransportControlGlue.host = glueHost
         mTransportControlGlue.title = movieSeriesPageInfo.info.title
-        mTransportControlGlue.subtitle = "Год: ${movieSeriesPageInfo.info.yearStart}" + Util.ifData(movieSeriesPageInfo.info.yearEnd) { "-$it" } + ", Жанр: " + movieSeriesPageInfo.info.genres.contentToString()
+        mTransportControlGlue.subtitle = "Год: ${movieSeriesPageInfo.info.yearStart}" + movieSeriesPageInfo.info.yearEnd.ifData("") { "-$it" } + ", Жанр: " + movieSeriesPageInfo.info.genres.contentToString()
         mTransportControlGlue.playWhenPrepared()
         mTransportControlGlue.isSeekEnabled = true
 
