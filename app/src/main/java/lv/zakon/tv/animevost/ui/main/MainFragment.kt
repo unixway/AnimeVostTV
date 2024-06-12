@@ -146,23 +146,25 @@ class MainFragment : BrowseSupportFragment() {
                 rowViewHolder: RowPresenter.ViewHolder,
                 row: Row) {
 
-            if (item is MovieSeriesInfo) {
-                val intent = Intent(context!!, DetailsActivity::class.java)
-                intent.putExtra(DetailsActivity.MOVIE, item)
+            when(item) {
+                is MovieSeriesInfo -> {
+                    val intent = Intent(context!!, DetailsActivity::class.java)
+                    intent.putExtra(DetailsActivity.MOVIE, item)
 
-                val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
                         activity!!,
                         (itemViewHolder.view as ImageCardView).mainImageView,
-                    DetailsActivity.SHARED_ELEMENT_NAME
-                )
-                        .toBundle()
-                startActivity(intent, bundle)
-            } else if (item is String) {
-                if (item.contains(getString(R.string.error_fragment))) {
-                    val intent = Intent(context!!, BrowseErrorActivity::class.java)
-                    startActivity(intent)
-                } else {
-                    Toast.makeText(context!!, item, Toast.LENGTH_SHORT).show()
+                        DetailsActivity.SHARED_ELEMENT_NAME
+                    ).toBundle()
+                    startActivity(intent, bundle)
+                }
+                is String -> {
+                    if (item.contains(getString(R.string.error_fragment))) {
+                        val intent = Intent(context!!, BrowseErrorActivity::class.java)
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(context!!, item, Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
