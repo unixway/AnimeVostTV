@@ -38,12 +38,10 @@ class MainActivity : FragmentActivity() {
 
     private suspend fun loadRows() = withContext(Dispatchers.IO) {
         val recent = AppPrefs.recent.first()
-        Log.i("MainActivity", "loadRows[recent]: " + recent.joinToString(","))
         if (recent.isNotEmpty()) {
             for (id in recent.reversed()) {
                 val cache = AppPrefs.cachedMovie.first()
-                Log.i("MainActivity", "loadRows[$id]: " + cache[id.toLong()])
-                cache[id.toLong()]?.also {  page ->
+                cache[id.toLong()]?.also { page ->
                     AnimeVostProvider.instance.requestMovieSeriesInfo(page)
                 }
             }
