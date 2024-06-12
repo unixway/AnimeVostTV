@@ -1,0 +1,33 @@
+[versions]
+agp = "8.4.1"
+kotlin = "1.9.0"
+#noinspection GradleDependency
+coreKtx = "1.6.0" # android 11 compatability
+leanback = "1.0.0"
+glide = "4.11.0"
+jsoup = "1.11.2"
+eventbus = "3.3.1"
+#noinspection GradleDependency
+lifecycle = "2.3.1" # android 11 compatability
+coroutines = "1.9.0-RC"
+gson = "2.10.1"
+ktor = "2.3.11"
+kotds = "1.0"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-leanback = { group = "androidx.leanback", name = "leanback", version.ref = "leanback" }
+glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
+eventbus = { group = "org.greenrobot", name = "eventbus", version.ref = "eventbus" }
+lifecycle = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+ktorcore = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktorcio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
+kotds = { group = "com.github.S-H-Y-A.KotlinDataStore", name ="core", version.ref = "kotds" }
+kotdsinit = { group = "com.github.S-H-Y-A.KotlinDataStore", name ="initializer", version.ref = "kotds" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+

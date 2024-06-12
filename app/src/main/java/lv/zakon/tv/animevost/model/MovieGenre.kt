@@ -1,0 +1,31 @@
+package lv.zakon.tv.animevost.model
+
+enum class MovieGenre(val l10n: String, val path: String) {
+    MARTIAL_ART("Боевые искусства", "boyevyye-iskusstva"),
+//    WAR("Война", "voyna"),
+    DRAMA("Драма", "drama"),
+    DETECTIVE("Детектив", "detektiv"),
+    HISTORY("История", "istoriya"),
+    COMEDY("Комедия", "komediya"),
+    MECHA("Меха", "mekha"),
+    MISTICS("Мистика", "mistika"),
+    MACHO_SYODZYO("Махо-сёдзё", "makho-sedze"),
+    MUSICAL("Музыкальный", "muzykalnyy"),
+    DAYLY_LIFE("Повседневность", "povsednevnost"),
+    ADVENTURES("Приключения", "priklyucheniya"),
+    PARODY("Пародия", "parodiya"),
+    ROMANTICS("Романтика", "romantika"),
+    SYONEN("Сёнэн", "senen"),
+    SYODZYO("Сёдзё", "sedze"),
+    SPORT("Спорт", "sport"),
+    FAIRY_TALE("Сказка", "skazka"),
+    SYODZYO_AJ("Сёдзё-ай", "sedze-ay"),
+//    SYONEN_AJ("Сёнэн-ай", "senen-ay"),
+    SAMURAIS("Самураи", "samurai"),
+    TRILLER("Триллер", "triller"),
+    HORROR("Ужасы", "uzhasy"),
+    SCIENCE_FICTION("Фантастика", "fantastika"),
+    FANTASY("Фэнтази", "fentezi"),
+    SCHOOL("Школа", "shkola"),
+    ECCHI("Этти", "etti")
+}

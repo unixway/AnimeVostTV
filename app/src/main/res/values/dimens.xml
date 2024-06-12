@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="lb_browse_header_text_size">22sp</dimen>
+    <dimen name="lb_browse_headers_vertical_spacing">32dp</dimen>
+</resources>
