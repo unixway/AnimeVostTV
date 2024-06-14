@@ -11,6 +11,9 @@ class VideoPlayerGlue(context: Context?, adapter: MediaPlayerAdapter) : Playback
     private val mFastForwardAction = PlaybackControlsRow.FastForwardAction(context)
     private val mRewindAction = PlaybackControlsRow.RewindAction(context)
 
+    private var seekts = 0L;
+    private var fftime = THIRTY_SECONDS;
+    private var rewtime = TEN_SECONDS;
     override fun onCreatePrimaryActions(adapter: ArrayObjectAdapter) {
         super.onCreatePrimaryActions(adapter)
         adapter.add(mRewindAction)
@@ -61,17 +64,31 @@ class VideoPlayerGlue(context: Context?, adapter: MediaPlayerAdapter) : Playback
 
     /** Skips backwards 10 seconds.  */
     private fun rewind() {
-        var newPosition: Long =  currentPosition - TEN_SECONDS
+        val newseekts = System.currentTimeMillis()
+        if (newseekts - seekts < 1000) {
+            rewtime += rewtime / 2
+        } else {
+            rewtime = TEN_SECONDS
+        }
+        var newPosition: Long =  currentPosition - rewtime
         newPosition = if ((newPosition < 0)) 0 else newPosition
         playerAdapter.seekTo(newPosition)
+        seekts = newseekts
     }
 
     /** Skips forward 30 seconds.  */
     private fun fastForward() {
         if (duration > -1) {
-            var newPosition: Long = currentPosition + THIRTY_SECONDS
+            val newseekts = System.currentTimeMillis()
+            if (newseekts - seekts < 1000) {
+                fftime += fftime / 2
+            } else {
+                fftime = THIRTY_SECONDS
+            }
+            var newPosition: Long = currentPosition + fftime
             newPosition = if ((newPosition > duration)) duration else newPosition
             playerAdapter.seekTo(newPosition)
+            seekts = newseekts
         }
     }
 
