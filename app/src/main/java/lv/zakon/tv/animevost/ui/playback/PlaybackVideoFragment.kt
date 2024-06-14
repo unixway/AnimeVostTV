@@ -35,7 +35,7 @@ class PlaybackVideoFragment : VideoSupportFragment() {
 
         mTransportControlGlue = VideoPlayerGlue(context, playerAdapter)
         mTransportControlGlue.host = glueHost
-        mTransportControlGlue.title = movieSeriesPageInfo.info.title
+        mTransportControlGlue.title = videoDesc.first + " (" + movieSeriesPageInfo.info.title + ")"
         mTransportControlGlue.subtitle = "Год: ${movieSeriesPageInfo.info.yearStart}" + movieSeriesPageInfo.info.yearEnd.ifData("") { "-$it" } + ", Жанр: " + movieSeriesPageInfo.info.genres.contentToString()
         mTransportControlGlue.playWhenPrepared()
         mTransportControlGlue.isSeekEnabled = true
