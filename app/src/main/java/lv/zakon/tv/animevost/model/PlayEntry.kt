@@ -1,11 +1,13 @@
 package lv.zakon.tv.animevost.model
 
+import java.io.Serializable
+
 data class PlayEntry(
     val hd: String,
     val name: String,
     val preview: String,
     val std: String,
-) {
+) : Serializable {
     val id by lazy {
         hd.substringAfterLast('/').substringBefore('.').toLong()
     }
@@ -14,5 +16,6 @@ data class PlayEntry(
         preview.replaceFirst("http:", "https:")
     }
 
-    var watched: Boolean = false
+    var storedPosition: Long = 0
+    var watchedPercent: Byte = 0
 }

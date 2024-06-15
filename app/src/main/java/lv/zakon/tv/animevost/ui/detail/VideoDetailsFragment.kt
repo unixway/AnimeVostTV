@@ -34,6 +34,7 @@ import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.ui.playback.PlaybackActivity
 import lv.zakon.tv.animevost.R
+import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.provider.MovieSeriesInfoEvent
 import lv.zakon.tv.animevost.provider.PlaylistFetchedEvent
@@ -72,25 +73,46 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
         adapter = mAdapter
         initializeBackground(mSelectedMovie)
         onItemViewClickedListener = ItemViewClickedListener()
+    }
+
+    override fun onResume() {
+        super.onResume()
         EventBus.getDefault().register(this)
     }
 
-    override fun onDestroy() {
+    override fun onPause() {
         EventBus.getDefault().unregister(this)
+        super.onPause()
+    }
+
+    override fun onDestroy() {
         super.onDestroy()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onDetailEvent(event : MovieSeriesInfoEvent) {
+    fun onDetailEvent(event: MovieSeriesInfoEvent) {
         relatedRowAdapter.add(event.info)
     }
 
+    private class FatAction(val entry: PlayEntry, watchedMark : CharSequence) : Action(entry.id, entry.name, watchedMark)
+
     @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onPlaylistEvent(event : PlaylistFetchedEvent) {
+    fun onPlaylistEvent(event: PlaylistFetchedEvent) {
         for (entry in event.playlist) {
-            val watchedMark = entry.watched.ifc("👁", "")
-            val action = Action(entry.id, entry.name, watchedMark)
+            val watchedMark = eyeify(entry.watchedPercent)
+            val action = FatAction(entry, watchedMark)
             mActionAdapter.add(action)
+        }
+    }
+
+    private fun eyeify(watchedPercent: Byte): CharSequence {
+        return when (watchedPercent.toInt()) {
+            0 -> ""
+            in 1 until 25 -> "👁"
+            in 25 until 50 -> "👁👁"
+            in 50 until 75 -> "👁👁👁"
+            in 75 until 100 -> "👁👁👁👁"
+            else -> "👁💯"
         }
     }
 
@@ -159,7 +181,8 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
         detailsPresenter.onActionClickedListener = OnActionClickedListener { action ->
             val intent = Intent(context!!, PlaybackActivity::class.java)
             intent.putExtra(DetailsActivity.MOVIE_SERIES_DETAILS, details)
-            intent.putExtra(DetailsActivity.PLAY_DESC, Pair(action.label1, action.id))
+            action as FatAction
+            intent.putExtra(DetailsActivity.PLAY_DESC, action.entry)
             startActivity(intent)
         }
         mPresenterSelector.addClassPresenter(DetailsOverviewRow::class.java, detailsPresenter)

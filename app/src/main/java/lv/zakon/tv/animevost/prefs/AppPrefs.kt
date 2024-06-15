@@ -1,5 +1,6 @@
 package lv.zakon.tv.animevost.prefs
 
+import android.util.Log
 import com.s_h_y_a.kotlindatastore.DataStorePrefDataConverter
 import com.s_h_y_a.kotlindatastore.KotlinDataStoreModel
 import com.s_h_y_a.kotlindatastore.pref.saveAsStringFlowPref
@@ -9,12 +10,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.log
 
 object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
     val searches by stringSetFlowPref(setOf("isekai", "academia", "iruma"), key = "searches")
-    val recent by stringSetFlowPref(key = "recent")
-    val cachedMovie by jsonFlowPref(mapOf<Long, String>(), "cachedD", MapLongStringDeser())
-    val watchedEps by jsonFlowPref(mapOf<Long, Set<Long>>(), "watchedO", MapLongSetLongDeser())
+    val recent by stringSetFlowPref(key = "recentA")
+    val cachedMovie by jsonFlowPref(mapOf(), "cachedD", MapLongStringDeser())
+    val watchedEps by jsonFlowPref(mapOf(), "watchedE", MapLongMapLongPairLongByteDeser())
 
     suspend fun addSearch(search: String) {
         val searchesSoFar = searches.first()
@@ -26,7 +28,7 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         }
     }
 
-    suspend fun markWatch(id: Long, pageUrl: String, episodeId: Long) = withContext(Dispatchers.IO) {
+    suspend fun markWatch(id: Long, pageUrl: String, episodeId: Long, position : Long = 0, percent: Byte = 0) = withContext(Dispatchers.IO) {
         val recently = recent.first()
         if (recently.contains(id.toString()).not()) {
             val mutateRecent = recently.toMutableSet().also {
@@ -42,11 +44,14 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
             cachedMovie.emit(mutateCache)
         }
         val watched = watchedEps.first()
-        if (watched[id]?.contains(episodeId) != true) {
+        val prePosition = watched[id]?.get(episodeId)?.first
+        if (prePosition == null || prePosition < position) {
             val mutateWatched = watched.toMutableMap()
-            mutateWatched.compute(id, fun(_:Long, set: Set<Long>?): Set<Long> =
-                set?.toMutableSet()?.also { it.add(episodeId) } ?: setOf(episodeId)
-            )
+            mutateWatched.compute(id, fun(_:Long, map: Map<Long, Pair<Long, Byte>>?): Map<Long, Pair<Long,Byte>> =
+                with(Pair(position, percent)) {
+                    map?.toMutableMap()?.also { it[episodeId] = this } ?: mapOf(Pair(episodeId, this))
+                })
+            Log.i("AppPres", "emiting markWatch: $mutateWatched")
             watchedEps.emit(mutateWatched)
         }
     }
@@ -93,18 +98,20 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         }
     }
 
-    class MapLongSetLongDeser : JSONDeser<Long, Set<Long>> {
-        override fun toJSON(value: Map<Long, Set<Long>>): JSONObject =
-            JSONObject(value.map { Pair(it.key.toString(), JSONArray(it.value.toTypedArray())) }.toMap())
+    class MapLongMapLongPairLongByteDeser : JSONDeser<Long, Map<Long, Pair<Long,Byte>>> {
+        override fun toJSON(value: Map<Long, Map<Long, Pair<Long,Byte>>>): JSONObject =
+            JSONObject(value.map { Pair(it.key.toString(),
+                JSONObject(it.value.map { ep -> Pair(ep.key.toString(),
+                    JSONArray(arrayOf(ep.value.first, ep.value.second))) }.toMap())) }.toMap())
 
-        override fun fromJSON(serialized: JSONObject): Map<Long, Set<Long>> {
-            val result = LinkedHashMap<Long, Set<Long>>()
+        override fun fromJSON(serialized: JSONObject): Map<Long, Map<Long, Pair<Long,Byte>>> {
+            val result = LinkedHashMap<Long, Map<Long, Pair<Long, Byte>>>()
             serialized.keys().forEach {
-                val arr = serialized.getJSONArray(it)
-                val res = mutableSetOf<Long>()
-                for (i in 0 until arr.length()) {
-                    res.add(arr.getLong(i))
-                }
+                val vMap = serialized.getJSONObject(it)
+                val res = mutableMapOf<Long, Pair<Long, Byte>>()
+                vMap.keys().forEach { ep -> res[ep.toLong()] = with(vMap.getJSONArray(ep)) {
+                    Pair(getLong(0), getLong(1).toByte())
+                }}
                 result[it.toLong()] = res
             }
             return result

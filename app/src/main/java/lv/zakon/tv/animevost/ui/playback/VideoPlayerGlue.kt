@@ -2,6 +2,7 @@ package lv.zakon.tv.animevost.ui.playback
 
 import android.content.Context
 import androidx.leanback.media.MediaPlayerAdapter
+import androidx.leanback.media.PlaybackGlue
 import androidx.leanback.media.PlaybackTransportControlGlue
 import androidx.leanback.widget.Action
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -89,6 +90,23 @@ class VideoPlayerGlue(context: Context?, adapter: MediaPlayerAdapter) : Playback
             newPosition = if ((newPosition > duration)) duration else newPosition
             playerAdapter.seekTo(newPosition)
             seekts = newseekts
+        }
+    }
+
+    fun seekToAndPlayWhenPrepared(position: Long) {
+        if (isPrepared) {
+            seekTo(position)
+            play()
+        } else {
+            addPlayerCallback(object : PlayerCallback() {
+                override fun onPreparedStateChanged(glue: PlaybackGlue) {
+                    if (glue.isPrepared) {
+                        removePlayerCallback(this)
+                        seekTo(position)
+                        play()
+                    }
+                }
+            })
         }
     }
 

@@ -146,8 +146,9 @@ class AnimeVostProvider private constructor() {
             jsonObject.getString("preview"),
             jsonObject.getString("std")
         )
-        if (AppPrefs.watchedEps.first()[movieId]?.contains(entry.id) == true) {
-            entry.watched = true
+        AppPrefs.watchedEps.first()[movieId]?.get(entry.id)?.let {
+            entry.storedPosition = it.first
+            entry.watchedPercent = it.second
         }
         return entry
     }
