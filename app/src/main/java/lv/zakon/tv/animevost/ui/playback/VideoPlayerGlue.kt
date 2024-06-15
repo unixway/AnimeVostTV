@@ -12,9 +12,9 @@ class VideoPlayerGlue(context: Context?, adapter: MediaPlayerAdapter) : Playback
     private val mFastForwardAction = PlaybackControlsRow.FastForwardAction(context)
     private val mRewindAction = PlaybackControlsRow.RewindAction(context)
 
-    private var seekts = 0L;
-    private var fftime = THIRTY_SECONDS;
-    private var rewtime = TEN_SECONDS;
+    private var seekts = 0L
+    private var fftime = THIRTY_SECONDS
+    private var rewtime = TEN_SECONDS
     override fun onCreatePrimaryActions(adapter: ArrayObjectAdapter) {
         super.onCreatePrimaryActions(adapter)
         adapter.add(mRewindAction)

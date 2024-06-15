@@ -157,6 +157,7 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
     }
 
     companion object {
+        @Suppress("unused")
         private const val TAG = "SearchFragment"
         private const val FINISH_ON_RECOGNIZER_CANCELED = true
         private const val REQUEST_SPEECH = 0x00000010

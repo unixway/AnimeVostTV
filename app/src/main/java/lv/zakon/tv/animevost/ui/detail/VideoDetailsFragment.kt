@@ -24,7 +24,6 @@ import androidx.leanback.widget.Row
 import androidx.leanback.widget.RowPresenter
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import android.util.Log
 
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
@@ -38,7 +37,6 @@ import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.provider.MovieSeriesInfoEvent
 import lv.zakon.tv.animevost.provider.PlaylistFetchedEvent
-import lv.zakon.tv.animevost.ui.common.Util.ifext.ifc
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -83,10 +81,6 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     override fun onPause() {
         EventBus.getDefault().unregister(this)
         super.onPause()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

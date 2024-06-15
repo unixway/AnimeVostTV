@@ -1,7 +1,6 @@
 package lv.zakon.tv.animevost.ui.main
 
 import android.os.Bundle
-import android.util.Log
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +12,7 @@ import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
 import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.EventBusException
 
 /**
  * Loads [MainFragment].
@@ -22,7 +22,11 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        EventBus.builder().logNoSubscriberMessages(false).sendNoSubscriberEvent(false).installDefaultEventBus()
+        try {
+            EventBus.builder().logNoSubscriberMessages(false).sendNoSubscriberEvent(false).installDefaultEventBus()
+        } catch (e : EventBusException) {
+            // application restart causes this
+        }
 
         setContentView(R.layout.activity_main)
         if (savedInstanceState == null) {

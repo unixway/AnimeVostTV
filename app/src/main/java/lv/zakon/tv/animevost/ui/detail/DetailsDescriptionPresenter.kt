@@ -3,7 +3,7 @@ package lv.zakon.tv.animevost.ui.detail
 import android.text.Html
 import androidx.leanback.widget.AbstractDetailsDescriptionPresenter
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
-import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
 
 class DetailsDescriptionPresenter : AbstractDetailsDescriptionPresenter() {
 

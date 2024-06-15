@@ -9,9 +9,8 @@ import android.view.ViewGroup
 import com.bumptech.glide.Glide
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
-import lv.zakon.tv.animevost.ui.common.Util
-import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
-import lv.zakon.tv.animevost.ui.common.Util.ifext.ifc
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifc
 import kotlin.properties.Delegates
 
 /**

@@ -214,6 +214,7 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     companion object {
+        @Suppress("unused")
         private const val TAG = "MainFragment"
 
         private const val BACKGROUND_UPDATE_DELAY = 300

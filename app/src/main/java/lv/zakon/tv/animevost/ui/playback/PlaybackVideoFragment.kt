@@ -1,23 +1,21 @@
 package lv.zakon.tv.animevost.ui.playback
 
-import android.media.MediaPlayer.SEEK_CLOSEST_SYNC
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.leanback.app.VideoSupportFragment
 import androidx.leanback.app.VideoSupportFragmentGlueHost
 import androidx.leanback.media.MediaPlayerAdapter
-import androidx.leanback.media.PlaybackGlue
-import androidx.leanback.media.PlaybackTransportControlGlue
 import androidx.leanback.widget.PlaybackControlsRow
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
 import lv.zakon.tv.animevost.ui.common.Util
-import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 
 /** Handles video playback with media controls. */
@@ -42,7 +40,7 @@ class PlaybackVideoFragment : VideoSupportFragment() {
         mTransportControlGlue = VideoPlayerGlue(context, playerAdapter)
         mTransportControlGlue.host = glueHost
         mTransportControlGlue.title = videoDesc.name + " (" + movieSeriesPageInfo.info.title + ")"
-        mTransportControlGlue.subtitle = "Год: ${movieSeriesPageInfo.info.yearStart}" + movieSeriesPageInfo.info.yearEnd.ifData("") { "-$it" } + ", Жанр: " + movieSeriesPageInfo.info.genres.contentToString()
+        mTransportControlGlue.subtitle = getString(R.string.playback_info, movieSeriesPageInfo.info.yearStart.toString() + movieSeriesPageInfo.info.yearEnd.ifData("") { "-$it" }, movieSeriesPageInfo.info.genres.contentToString())
         mTransportControlGlue.isSeekEnabled = true
 
         playerAdapter.setDataSource(Uri.parse(videoUrl))

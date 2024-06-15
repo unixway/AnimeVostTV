@@ -1,6 +1,6 @@
 package lv.zakon.tv.animevost.model
 
-import lv.zakon.tv.animevost.ui.common.Util.ifext.ifData
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
 import java.io.Serializable
 
 /**
