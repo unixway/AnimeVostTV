@@ -63,14 +63,14 @@ class MainFragment : BrowseSupportFragment() {
         setupEventListeners()
     }
 
-    override fun onStart() {
-        super.onStart()
+    override fun onResume() {
+        super.onResume()
         EventBus.getDefault().register(this)
     }
 
-    override fun onStop() {
+    override fun onPause() {
         EventBus.getDefault().unregister(this)
-        super.onStop()
+        super.onPause()
     }
 
     override fun onDestroy() {

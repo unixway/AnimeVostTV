@@ -44,13 +44,16 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
         setSearchResultProvider(this)
         setOnItemViewClickedListener(ItemViewClickedListener())
         setOnItemViewSelectedListener(ItemViewSelectedListener())
+    }
 
+    override fun onResume() {
+        super.onResume()
         EventBus.getDefault().register(this)
     }
 
-    override fun onDestroy() {
+    override fun onPause() {
         EventBus.getDefault().unregister(this)
-        super.onDestroy()
+        super.onPause()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
