@@ -102,10 +102,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     private fun eyeify(watchedPercent: Byte): CharSequence {
         return when (watchedPercent.toInt()) {
             0 -> ""
-            in 1 until 25 -> "👁"
-            in 25 until 50 -> "👁👁"
-            in 50 until 75 -> "👁👁👁"
-            in 75 until 100 -> "👁👁👁👁"
+            in 1 until 100 -> "👁 ${watchedPercent}%"
             else -> "👁💯"
         }
     }
