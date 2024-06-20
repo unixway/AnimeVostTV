@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.math.log
 
 object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
     val searches by stringSetFlowPref(setOf("isekai", "academia", "iruma"), key = "searches")
@@ -30,10 +29,16 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
 
     suspend fun markWatch(id: Long, pageUrl: String, episodeId: Long, position : Long = 0, percent: Byte = 0) = withContext(Dispatchers.IO) {
         val recently = recent.first()
-        if (recently.contains(id.toString()).not()) {
-            val mutateRecent = recently.toMutableSet().also {
-                it.add(id.toString())
+        val strId = id.toString()
+        if ((strId == recently.lastOrNull()).not()) {
+            val mutateRecent = recently.toMutableSet()
+            if (mutateRecent.contains(strId)) {
+                mutateRecent.remove(strId)
+                // пришлось писать два раза, потому что y LinkedHashSet хешфункция совпадает с HashSet,
+                // порядок не имеет значения, и изменение порядка элементов не записывается в DataStore
+                recent.emit(mutateRecent)
             }
+            mutateRecent.add(strId)
             recent.emit(mutateRecent)
         }
         val cache = cachedMovie.first()
@@ -51,7 +56,6 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
                 with(Pair(position, percent)) {
                     map?.toMutableMap()?.also { it[episodeId] = this } ?: mapOf(Pair(episodeId, this))
                 })
-            Log.i("AppPres", "emiting markWatch: $mutateWatched")
             watchedEps.emit(mutateWatched)
         }
     }
