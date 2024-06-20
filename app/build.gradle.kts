@@ -44,4 +44,5 @@ dependencies {
     implementation(libs.ktorcio)
     implementation(libs.kotds)
     implementation(libs.kotdsinit)
+    implementation(libs.constraintlayout)
 }

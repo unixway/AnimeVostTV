@@ -2,6 +2,7 @@
     <string name="app_name">AnimeVostTV</string>
     <string name="browse_title">Видео предоставлены AnimeVost</string>
     <string name="related_movies">Связанные видео</string>
+    <string name="series_list">Список серий</string>
     <string name="recent">Недавние просмотры</string>
     <string name="last">Последние</string>
     <string name="grid_view">Grid View</string>

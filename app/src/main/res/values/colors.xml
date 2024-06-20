@@ -7,4 +7,5 @@
     <color name="search_opaque">#ffaa3f</color>
     <color name="selected_background">#ffaa3f</color>
     <color name="default_background">#3d3d3d</color>
+    <color name="background_color_opaque">#90000000</color>
 </resources>

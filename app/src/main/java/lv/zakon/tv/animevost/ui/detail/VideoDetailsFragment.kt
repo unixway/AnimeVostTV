@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.graphics.drawable.Drawable
+import android.util.Log
 import androidx.leanback.app.DetailsSupportFragment
 import androidx.leanback.app.DetailsSupportFragmentBackgroundController
 import androidx.leanback.widget.Action
@@ -52,6 +53,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     private lateinit var mDetailsBackground: DetailsSupportFragmentBackgroundController
     private lateinit var mPresenterSelector: ClassPresenterSelector
     private lateinit var mAdapter: ArrayObjectAdapter
+    private lateinit var mPlaylistAdapter: ArrayObjectAdapter
     private lateinit var mActionAdapter: ArrayObjectAdapter
     private lateinit var relatedRowAdapter: ArrayObjectAdapter
 
@@ -60,11 +62,12 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
 
         mDetailsBackground = DetailsSupportFragmentBackgroundController(this)
 
-        mSelectedMovie = Util.getExtra(activity!!, DetailsActivity.MOVIE) as MovieSeriesInfo
+        mSelectedMovie = Util.getExtra(requireActivity(), DetailsActivity.MOVIE) as MovieSeriesInfo
         mPresenterSelector = ClassPresenterSelector()
         mAdapter = ArrayObjectAdapter(mPresenterSelector)
         setupDetailsOverviewRow()
         setupDetailsOverviewRowPresenter()
+        setupNewPlayListRow()
         if (details.relatedSeries.isNotEmpty()) {
             setupRelatedMovieListRow()
         }
@@ -93,23 +96,16 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onPlaylistEvent(event: PlaylistFetchedEvent) {
         for (entry in event.playlist) {
-            val watchedMark = eyeify(entry.watchedPercent)
+            val watchedMark = PlayEntryPresenter.eyeify(entry.watchedPercent)
             val action = FatAction(entry, watchedMark)
             mActionAdapter.add(action)
-        }
-    }
-
-    private fun eyeify(watchedPercent: Byte): CharSequence {
-        return when (watchedPercent.toInt()) {
-            0 -> ""
-            in 1 until 100 -> "👁 ${watchedPercent}%"
-            else -> "👁💯"
+            mPlaylistAdapter.add(entry)
         }
     }
 
     private fun initializeBackground(movie: MovieSeriesInfo?) {
         mDetailsBackground.enableParallax()
-        Glide.with(context!!)
+        Glide.with(requireContext())
                 .asBitmap()
                 .centerCrop()
                 .error(R.drawable.default_background)
@@ -129,10 +125,10 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
 
     private fun setupDetailsOverviewRow() {
         val row = DetailsOverviewRow(details)
-        row.imageDrawable = ContextCompat.getDrawable(context!!, R.drawable.default_background)
-        val width = convertDpToPixel(context!!, DETAIL_THUMB_WIDTH)
-        val height = convertDpToPixel(context!!, DETAIL_THUMB_HEIGHT)
-        Glide.with(context!!)
+        row.imageDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.default_background)
+        val width = convertDpToPixel(requireContext(), DETAIL_THUMB_WIDTH)
+        val height = convertDpToPixel(requireContext(), DETAIL_THUMB_HEIGHT)
+        Glide.with(requireContext())
                 .load(mSelectedMovie?.cardImageUrl)
                 .centerCrop()
                 .error(R.drawable.default_background)
@@ -159,7 +155,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
         // Set detail background.
         val detailsPresenter = FullWidthDetailsOverviewRowPresenter(DetailsDescriptionPresenter())
         detailsPresenter.backgroundColor =
-                ContextCompat.getColor(context!!, R.color.selected_background)
+                ContextCompat.getColor(requireContext(), R.color.selected_background)
 
         // Hook up transition element.
         val sharedElementHelper = FullWidthDetailsOverviewSharedElementHelper()
@@ -170,13 +166,23 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
         detailsPresenter.isParticipatingEntranceTransition = true
 
         detailsPresenter.onActionClickedListener = OnActionClickedListener { action ->
-            val intent = Intent(context!!, PlaybackActivity::class.java)
+            val intent = Intent(requireContext(), PlaybackActivity::class.java)
             intent.putExtra(DetailsActivity.MOVIE_SERIES_DETAILS, details)
             action as FatAction
             intent.putExtra(DetailsActivity.PLAY_DESC, action.entry)
             startActivity(intent)
         }
         mPresenterSelector.addClassPresenter(DetailsOverviewRow::class.java, detailsPresenter)
+        mPresenterSelector.addClassPresenter(ListRow::class.java, ListRowPresenter())
+    }
+
+    private fun setupNewPlayListRow() {
+        val subcategories = arrayOf(getString(R.string.series_list))
+
+        mPlaylistAdapter = ArrayObjectAdapter(PlayEntryPresenter())
+
+        val header = HeaderItem(0, subcategories[0])
+        mAdapter.add(ListRow(header, mPlaylistAdapter))
     }
 
     private fun setupRelatedMovieListRow() {
@@ -184,9 +190,8 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
 
         relatedRowAdapter = ArrayObjectAdapter(CardPresenter())
 
-        val header = HeaderItem(0, subcategories[0])
+        val header = HeaderItem(1, subcategories[0])
         mAdapter.add(ListRow(header, relatedRowAdapter))
-        mPresenterSelector.addClassPresenter(ListRow::class.java, ListRowPresenter())
     }
 
     private fun convertDpToPixel(context: Context, dp: Int): Int {
@@ -200,18 +205,26 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
                 item: Any?,
                 rowViewHolder: RowPresenter.ViewHolder,
                 row: Row) {
-            if (item is MovieSeriesInfo) {
-                val intent = Intent(context!!, DetailsActivity::class.java)
-                intent.putExtra(DetailsActivity.MOVIE, item)
+            when(item) {
+                is MovieSeriesInfo -> {
+                    val intent = Intent(context!!, DetailsActivity::class.java)
+                    intent.putExtra(DetailsActivity.MOVIE, item)
 
-                val bundle =
+                    val bundle =
                         ActivityOptionsCompat.makeSceneTransitionAnimation(
-                                activity!!,
-                                (itemViewHolder?.view as ImageCardView).mainImageView,
+                            activity!!,
+                            (itemViewHolder?.view as ImageCardView).mainImageView,
                             DetailsActivity.SHARED_ELEMENT_NAME
                         )
-                                .toBundle()
-                startActivity(intent, bundle)
+                            .toBundle()
+                    startActivity(intent, bundle)
+                }
+                is PlayEntry -> {
+                    val intent = Intent(requireContext(), PlaybackActivity::class.java)
+                    intent.putExtra(DetailsActivity.MOVIE_SERIES_DETAILS, details)
+                    intent.putExtra(DetailsActivity.PLAY_DESC, item)
+                    startActivity(intent)
+                }
             }
         }
     }

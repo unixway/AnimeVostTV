@@ -56,20 +56,6 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
         super.onPause()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
-        when (requestCode) {
-            REQUEST_SPEECH -> when (resultCode) {
-                Activity.RESULT_OK -> setSearchQuery(data, true)
-                else ->                         // If recognizer is canceled or failed, keep focus on the search orb
-                    if (FINISH_ON_RECOGNIZER_CANCELED) {
-                        if (!hasResults()) {
-                            view!!.findViewById<View>(androidx.leanback.R.id.lb_search_bar_speech_orb).requestFocus()
-                        }
-                    }
-            }
-        }
-    }
-
     override fun getResultsAdapter(): ObjectAdapter {
         return mRowsAdapter
     }
