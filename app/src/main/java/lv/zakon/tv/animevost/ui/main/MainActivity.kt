@@ -11,13 +11,16 @@ import lv.zakon.tv.animevost.model.MovieGenre
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
+import lv.zakon.tv.animevost.provider.RequestId
+import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
+import lv.zakon.tv.animevost.ui.common.RequestedActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.EventBusException
 
 /**
  * Loads [MainFragment].
  */
-class MainActivity : FragmentActivity() {
+class MainActivity : RequestedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +31,7 @@ class MainActivity : FragmentActivity() {
             // application restart causes this
         }
 
+        val requestId = EventCounterGenerator.generate()
         setContentView(R.layout.activity_main)
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
@@ -46,14 +50,18 @@ class MainActivity : FragmentActivity() {
             for (id in recent.reversed()) {
                 val cache = AppPrefs.cachedMovie.first()
                 cache[id.toLong()]?.also { page ->
-                    AnimeVostProvider.instance.requestMovieSeriesInfo(page)
+                    val requestId = AnimeVostProvider.instance.requestMovieSeriesInfo(lifecycleScope, page)
+                    appendRequestId(requestId)
                 }
             }
         }
-        AnimeVostProvider.instance.requestMovieSeriesList()
-
+        run {
+            val requestId = AnimeVostProvider.instance.requestMovieSeriesList(lifecycleScope)
+            appendRequestId(requestId)
+        }
         for (i in 0 until MovieGenre.entries.size) {
-            AnimeVostProvider.instance.requestMovieSeriesListByCategory(MovieGenre.entries[i])
+            val requestId = AnimeVostProvider.instance.requestMovieSeriesListByCategory(lifecycleScope,  MovieGenre.entries[i])
+            appendRequestId(requestId)
         }
     }
 }

@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
+import lv.zakon.tv.animevost.provider.RequestId
 
 class SearchActivity : FragmentActivity() {
     private val mHandler = Handler(Looper.getMainLooper())
@@ -52,9 +53,7 @@ class SearchActivity : FragmentActivity() {
             mHandler.removeCallbacksAndMessages(null)
             if (lastPage < page) {
                 lastPage = page
-                lifecycleScope.launch {
-                    AnimeVostProvider.instance.requestMovieSeriesSearch(mQuery!!, page)
-                }
+                AnimeVostProvider.instance.requestMovieSeriesSearch(lifecycleScope, mQuery!!, page)
             }
         } else if (query!!.length > 3 && query != mQuery) {
             mQuery = query
@@ -64,8 +63,8 @@ class SearchActivity : FragmentActivity() {
                     lastPage = 1
                     lifecycleScope.launch {
                         AppPrefs.addSearch(query)
-                        AnimeVostProvider.instance.requestMovieSeriesSearch(query ,page)
                     }
+                    AnimeVostProvider.instance.requestMovieSeriesSearch(lifecycleScope, query ,page)
                 }
             }
             if (delayed) {

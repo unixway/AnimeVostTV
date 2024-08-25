@@ -8,11 +8,13 @@ import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
+import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
+import lv.zakon.tv.animevost.ui.common.RequestedActivity
 
 /**
  * Details activity class that loads [VideoDetailsFragment] class.
  */
-class DetailsActivity : FragmentActivity() {
+class DetailsActivity : RequestedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,9 +28,11 @@ class DetailsActivity : FragmentActivity() {
                     .replace(R.id.details_fragment, VideoDetailsFragment(details))
                     .commitNow()
             }
-            AnimeVostProvider.instance.requestPlayList(mSelectedMovie.id)
+
+            AnimeVostProvider.instance.requestPlayList(lifecycleScope, mSelectedMovie.id)
             for (related in details.relatedSeries) {
-                AnimeVostProvider.instance.requestMovieSeriesInfo(related.value)
+                val requestId = AnimeVostProvider.instance.requestMovieSeriesInfo(lifecycleScope, related.value)
+                appendRequestId(requestId)
             }
         }
     }

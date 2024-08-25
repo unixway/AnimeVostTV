@@ -12,6 +12,7 @@ import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import lv.zakon.tv.animevost.R
+import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
 import lv.zakon.tv.animevost.ui.main.MainFragment
 
 /**

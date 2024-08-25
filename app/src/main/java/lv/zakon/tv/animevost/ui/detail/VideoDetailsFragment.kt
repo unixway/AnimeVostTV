@@ -35,9 +35,11 @@ import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.ui.playback.PlaybackActivity
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.PlayEntry
+import lv.zakon.tv.animevost.provider.RequestId
 import lv.zakon.tv.animevost.ui.common.Util
-import lv.zakon.tv.animevost.provider.MovieSeriesInfoEvent
-import lv.zakon.tv.animevost.provider.PlaylistFetchedEvent
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesInfoEvent
+import lv.zakon.tv.animevost.provider.event.response.PlaylistFetchedEvent
+import lv.zakon.tv.animevost.ui.common.RequestedActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -88,7 +90,9 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDetailEvent(event: MovieSeriesInfoEvent) {
-        relatedRowAdapter.add(event.info)
+        (activity as RequestedActivity).placeResponseAction(event.requestId) {
+            relatedRowAdapter.add(event.info)
+        }
     }
 
     private class FatAction(val entry: PlayEntry, watchedMark : CharSequence) : Action(entry.id, entry.name, watchedMark)

@@ -1,5 +1,4 @@
 package lv.zakon.tv.animevost.ui.search
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -24,7 +23,7 @@ import lv.zakon.tv.animevost.ui.CardPresenter
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.prefs.AppPrefs
-import lv.zakon.tv.animevost.provider.MovieSeriesSearchFinishedEvent
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesSearchFinishedEvent
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -145,8 +144,6 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
     companion object {
         @Suppress("unused")
         private const val TAG = "SearchFragment"
-        private const val FINISH_ON_RECOGNIZER_CANCELED = true
-        private const val REQUEST_SPEECH = 0x00000010
 
         private const val ROWS_PER_PAGE = 10
     }

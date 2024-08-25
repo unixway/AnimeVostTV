@@ -33,9 +33,11 @@ import lv.zakon.tv.animevost.ui.CardPresenter
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
+import lv.zakon.tv.animevost.provider.RequestId
 import lv.zakon.tv.animevost.ui.search.SearchActivity
-import lv.zakon.tv.animevost.provider.MovieSeriesFetchedEvent
-import lv.zakon.tv.animevost.provider.MovieSeriesInfoEvent
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesFetchedEvent
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesInfoEvent
+import lv.zakon.tv.animevost.ui.common.RequestedActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -61,19 +63,12 @@ class MainFragment : BrowseSupportFragment() {
         setupUIElements()
 
         setupEventListeners()
-    }
 
-    override fun onResume() {
-        super.onResume()
         EventBus.getDefault().register(this)
     }
 
-    override fun onPause() {
-        EventBus.getDefault().unregister(this)
-        super.onPause()
-    }
-
     override fun onDestroy() {
+        EventBus.getDefault().unregister(this)
         super.onDestroy()
         mBackgroundTimer?.cancel()
     }
@@ -102,31 +97,35 @@ class MainFragment : BrowseSupportFragment() {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onEvent(event : MovieSeriesInfoEvent) {
-        val rowsAdapter = adapter as ArrayObjectAdapter
+        (activity as RequestedActivity).placeResponseAction(event.requestId) {
+            val rowsAdapter = adapter as ArrayObjectAdapter
 
-        if (rowsAdapter.size() == 0 || (rowsAdapter[0] as ListRow).id != 0L) {
-            val listRowAdapter = ArrayObjectAdapter(cardPresenter)
-            listRowAdapter.add(event.info)
-            val header = HeaderItem(0, getString(R.string.recent))
-            rowsAdapter.add(0, ListRow(header, listRowAdapter))
-            return
+            if (rowsAdapter.size() == 0 || (rowsAdapter[0] as ListRow).id != 0L) {
+                val listRowAdapter = ArrayObjectAdapter(cardPresenter)
+                listRowAdapter.add(event.info)
+                val header = HeaderItem(0, getString(R.string.recent))
+                rowsAdapter.add(0, ListRow(header, listRowAdapter))
+                return@placeResponseAction
+            }
+            ((rowsAdapter[0] as ListRow).adapter as ArrayObjectAdapter).add(event.info)
         }
-        ((rowsAdapter[0] as ListRow).adapter as ArrayObjectAdapter).add(event.info)
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onEvent(event : MovieSeriesFetchedEvent) {
-        val listRowAdapter = ArrayObjectAdapter(cardPresenter)
-        for (movie in event.series) {
-            listRowAdapter.add(movie)
+        (activity as RequestedActivity).placeResponseAction(event.requestId) {
+            val listRowAdapter = ArrayObjectAdapter(cardPresenter)
+            for (movie in event.series) {
+                listRowAdapter.add(movie)
+            }
+            val header = if (event.genre == null) {
+                HeaderItem(1, getString(R.string.last))
+            } else {
+                HeaderItem(2 + event.genre.ordinal.toLong(), event.genre.l10n)
+            }
+            val rowsAdapter = adapter as ArrayObjectAdapter
+            rowsAdapter.add(ListRow(header, listRowAdapter))
         }
-        val header = if (event.genre == null) {
-            HeaderItem(1, getString(R.string.last))
-        } else {
-            HeaderItem(2 + event.genre.ordinal.toLong(), event.genre.l10n)
-        }
-        val rowsAdapter = adapter as ArrayObjectAdapter
-        rowsAdapter.add(ListRow(header, listRowAdapter))
     }
 
     private fun setupEventListeners() {
@@ -195,7 +194,9 @@ class MainFragment : BrowseSupportFragment() {
                             }
 
                             override fun onLoadCleared(placeholder: Drawable?) {
-                                mBackgroundManager.drawable = null
+                                if (mBackgroundManager.drawable != null) {
+                                    mBackgroundManager.drawable = null
+                                }
                             }
                         })
         mBackgroundTimer?.cancel()

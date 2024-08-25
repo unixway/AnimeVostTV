@@ -6,14 +6,21 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.parameters
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.model.MovieGenre
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.prefs.AppPrefs
+import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesFetchedEvent
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesInfoEvent
+import lv.zakon.tv.animevost.provider.event.response.MovieSeriesSearchFinishedEvent
+import lv.zakon.tv.animevost.provider.event.response.PlaylistFetchedEvent
 import org.greenrobot.eventbus.EventBus
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,6 +29,8 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 import java.util.stream.Collectors
+
+typealias RequestId = Int
 
 class AnimeVostProvider private constructor() {
     companion object {
@@ -33,18 +42,58 @@ class AnimeVostProvider private constructor() {
         val instance: AnimeVostProvider = AnimeVostProvider()
     }
 
-    suspend fun requestMovieSeriesList(page: Int? = null) {
-        var addr = ANIMEVOST_ADDRESS
-        addr = addPage(addr, page)
-        val list = getMovieSeriesList(addr)
-        EventBus.getDefault().post(MovieSeriesFetchedEvent(series = list))
+    fun requestMovieSeriesList(scope: CoroutineScope, page: Int? = null) : RequestId {
+        val requestId = EventCounterGenerator.generate()
+        scope.launch {
+            requestMovieSeriesListInt(requestId, page)
+        }
+        return requestId
     }
 
-    suspend fun requestMovieSeriesListByCategory(category : MovieGenre, page: Int? = null) {
-        var addr = ANIMEVOST_ADDRESS + "/zhanr/" + category.path
-        addr = addPage(addr, page)
+    fun requestMovieSeriesListByCategory(scope: CoroutineScope, category : MovieGenre, page: Int? = null) : RequestId {
+        val requestId = EventCounterGenerator.generate()
+        scope.launch {
+            requestMovieSeriesListByCategoryInt(requestId, category, page)
+        }
+        return requestId
+    }
+
+    fun requestMovieSeriesSearch(scope: CoroutineScope, query: String, page: Int?) : RequestId {
+        val requestId = EventCounterGenerator.generate()
+        scope.launch {
+            requestMovieSeriesSearchInt(requestId, query, page)
+        }
+        return requestId
+    }
+
+    fun requestPlayList(scope: CoroutineScope, id: Long) : RequestId {
+        val requestId = EventCounterGenerator.generate()
+        scope.launch {
+            requestPlayListInt(requestId, id)
+        }
+        return requestId
+    }
+
+    fun requestMovieSeriesInfo(scope: CoroutineScope, pageAddr: String) : RequestId {
+        val requestId = EventCounterGenerator.generate()
+        scope.launch {
+            requestMovieSeriesInfoInt(requestId, pageAddr)
+        }
+        return requestId
+    }
+
+    private suspend fun requestMovieSeriesListInt(requestId: RequestId, page: Int? = null) {
+        var addr = ANIMEVOST_ADDRESS
+        addr = appendPageToAddress(addr, page)
         val list = getMovieSeriesList(addr)
-        EventBus.getDefault().post(MovieSeriesFetchedEvent(category, list))
+        EventBus.getDefault().post(MovieSeriesFetchedEvent(requestId, series = list))
+    }
+
+    private suspend fun requestMovieSeriesListByCategoryInt(requestId: RequestId, category : MovieGenre, page: Int? = null) {
+        var addr = ANIMEVOST_ADDRESS + "/zhanr/" + category.path
+        addr = appendPageToAddress(addr, page)
+        val list = getMovieSeriesList(addr)
+        EventBus.getDefault().post(MovieSeriesFetchedEvent(requestId, category, list))
     }
 
     suspend fun getMovieSeriesDetails(info: MovieSeriesInfo) : MovieSeriesPageInfo = withContext(Dispatchers.IO) {
@@ -80,13 +129,13 @@ class AnimeVostProvider private constructor() {
         pageInfo
     }
 
-    suspend fun requestMovieSeriesInfo(pageAddr: String) = withContext(Dispatchers.IO) {
+    private suspend fun requestMovieSeriesInfoInt(requestId: RequestId, pageAddr: String) = withContext(Dispatchers.IO) {
         val htmlData = Jsoup.connect(pageAddr).get()
         val info = toMovieSeries(htmlData.selectFirst("div#dle-content").selectFirst("div.shortstory"), pageAddr)
-        EventBus.getDefault().post(MovieSeriesInfoEvent(info))
+        EventBus.getDefault().post(MovieSeriesInfoEvent(requestId, info))
     }
 
-    suspend fun requestMovieSeriesSearch(query: String, page: Int?) = withContext(Dispatchers.IO) {
+    private suspend fun requestMovieSeriesSearchInt(requestId: RequestId, query: String, page: Int?) = withContext(Dispatchers.IO) {
         val htmlData = Jsoup.connect(ANIMEVOST_ADDRESS).let {
             if (page == null) {
                 it.data("do", "search", "subaction", "search", "story", query, "x", "0", "y", "0")
@@ -96,10 +145,10 @@ class AnimeVostProvider private constructor() {
             }
         }.post()
         val list = getMovieSeriesListFromHtmlData(htmlData)
-        EventBus.getDefault().post(MovieSeriesSearchFinishedEvent(query, list, page == null))
+        EventBus.getDefault().post(MovieSeriesSearchFinishedEvent(requestId, query, list, page == null))
     }
 
-    suspend fun requestPlayList(id: Long) {
+    private suspend fun requestPlayListInt(requestId: RequestId, id: Long) {
         val client = HttpClient(CIO)
 
         val response = client.submitForm(
@@ -115,10 +164,10 @@ class AnimeVostProvider private constructor() {
             val entry = toPlayListEntry(id, playlistJSON.getJSONObject(it))
             entry
         }
-        EventBus.getDefault().post(PlaylistFetchedEvent(id, playlist))
+        EventBus.getDefault().post(PlaylistFetchedEvent(requestId, id, playlist))
     }
 
-    private fun addPage(addr: String, page: Int?): String {
+    private fun appendPageToAddress(addr: String, page: Int?): String {
         if (page == null || page < 2) {
             return addr
         }

@@ -67,7 +67,7 @@ class VideoPlayerGlue(context: Context?, adapter: MediaPlayerAdapter) : Playback
     private fun rewind() {
         val newseekts = System.currentTimeMillis()
         if (newseekts - seekts < 1000) {
-            rewtime += rewtime / 2
+            rewtime += rewtime / 4
         } else {
             rewtime = TEN_SECONDS
         }
@@ -82,7 +82,7 @@ class VideoPlayerGlue(context: Context?, adapter: MediaPlayerAdapter) : Playback
         if (duration > -1) {
             val newseekts = System.currentTimeMillis()
             if (newseekts - seekts < 1000) {
-                fftime += fftime / 2
+                fftime += fftime / 4
             } else {
                 fftime = THIRTY_SECONDS
             }
