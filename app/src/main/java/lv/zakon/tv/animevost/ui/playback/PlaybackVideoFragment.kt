@@ -8,16 +8,12 @@ import androidx.leanback.app.VideoSupportFragmentGlueHost
 import androidx.leanback.media.MediaPlayerAdapter
 import androidx.leanback.widget.PlaybackControlsRow
 import androidx.lifecycle.lifecycleScope
-import io.ktor.util.reflect.instanceOf
 import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
-import lv.zakon.tv.animevost.provider.RequestId
-import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
-import lv.zakon.tv.animevost.provider.event.response.MovieSeriesFetchedEvent
 import lv.zakon.tv.animevost.provider.event.response.VideoSourceFetchedEvent
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData

@@ -1,8 +1,6 @@
 package lv.zakon.tv.animevost.provider
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.forms.submitForm
