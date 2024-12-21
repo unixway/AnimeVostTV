@@ -1,6 +1,8 @@
 package lv.zakon.tv.animevost.provider
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.forms.submitForm
@@ -21,6 +23,7 @@ import lv.zakon.tv.animevost.provider.event.response.MovieSeriesFetchedEvent
 import lv.zakon.tv.animevost.provider.event.response.MovieSeriesInfoEvent
 import lv.zakon.tv.animevost.provider.event.response.MovieSeriesSearchFinishedEvent
 import lv.zakon.tv.animevost.provider.event.response.PlaylistFetchedEvent
+import lv.zakon.tv.animevost.provider.event.response.VideoSourceFetchedEvent
 import org.greenrobot.eventbus.EventBus
 import org.json.JSONArray
 import org.json.JSONObject
@@ -38,6 +41,7 @@ class AnimeVostProvider private constructor() {
         private const val ANIMEVOST_ADDRESS = "https://animevost.org"
         private const val HD_TRN_SU = "https://hd.trn.su/720/"
         private const val PLAYLIST_URL = "https://api.animevost.org/v1/playlist"
+        private const val FRAME5_URL = ANIMEVOST_ADDRESS + "/frame5.php?play="
 
         val instance: AnimeVostProvider = AnimeVostProvider()
     }
@@ -82,18 +86,27 @@ class AnimeVostProvider private constructor() {
         return requestId
     }
 
+    suspend fun requestAlternativeVideoSource(id: Long) = withContext(Dispatchers.IO) {
+        val htmlData = Jsoup.connect(FRAME5_URL + id).get()
+        val videoSource = htmlData.select("a.butt[download=invoice]")[1].attr("href")
+
+        EventBus.getDefault().post(VideoSourceFetchedEvent(id, videoSource))
+    }
+
     private suspend fun requestMovieSeriesListInt(requestId: RequestId, page: Int? = null) {
-        var addr = ANIMEVOST_ADDRESS
-        addr = appendPageToAddress(addr, page)
-        val list = getMovieSeriesList(addr)
-        EventBus.getDefault().post(MovieSeriesFetchedEvent(requestId, series = list))
+        appendPageToAddress(ANIMEVOST_ADDRESS, page).also { addr ->
+            getMovieSeriesList(addr).also {
+                EventBus.getDefault().post(MovieSeriesFetchedEvent(requestId, series = it))
+            }
+        }
     }
 
     private suspend fun requestMovieSeriesListByCategoryInt(requestId: RequestId, category : MovieGenre, page: Int? = null) {
-        var addr = ANIMEVOST_ADDRESS + "/zhanr/" + category.path
-        addr = appendPageToAddress(addr, page)
-        val list = getMovieSeriesList(addr)
-        EventBus.getDefault().post(MovieSeriesFetchedEvent(requestId, category, list))
+        appendPageToAddress(ANIMEVOST_ADDRESS + "/zhanr/" + category.path, page).also { addr ->
+            getMovieSeriesList(addr).also {
+                EventBus.getDefault().post(MovieSeriesFetchedEvent(requestId, category, it))
+            }
+        }
     }
 
     suspend fun getMovieSeriesDetails(info: MovieSeriesInfo) : MovieSeriesPageInfo = withContext(Dispatchers.IO) {
@@ -144,8 +157,9 @@ class AnimeVostProvider private constructor() {
                     "full_search", "0", "result_from", (page * 10 - 9).toString(), "story", query)
             }
         }.post()
-        val list = getMovieSeriesListFromHtmlData(htmlData)
-        EventBus.getDefault().post(MovieSeriesSearchFinishedEvent(requestId, query, list, page == null))
+        getMovieSeriesListFromHtmlData(htmlData).also {
+            EventBus.getDefault().post(MovieSeriesSearchFinishedEvent(requestId, query, it, page == null))
+        }
     }
 
     private suspend fun requestPlayListInt(requestId: RequestId, id: Long) {
@@ -175,8 +189,9 @@ class AnimeVostProvider private constructor() {
     }
 
     private suspend fun getMovieSeriesList(addr: String) : List<MovieSeriesInfo> = withContext(Dispatchers.IO) {
-        val htmlData = Jsoup.connect(addr).get()
-        getMovieSeriesListFromHtmlData(htmlData)
+        Jsoup.connect(addr).get().let { htmlData ->
+            getMovieSeriesListFromHtmlData(htmlData)
+        }
     }
 
     private suspend fun getMovieSeriesListFromHtmlData(htmlData: Document) : List<MovieSeriesInfo> = withContext(Dispatchers.IO) {
@@ -189,24 +204,26 @@ class AnimeVostProvider private constructor() {
     }
 
     private suspend fun toPlayListEntry(movieId: Long, jsonObject: JSONObject): PlayEntry {
-        val entry = PlayEntry(
+        return PlayEntry(
             jsonObject.getString("hd"),
             jsonObject.getString("name"),
             jsonObject.getString("preview"),
             jsonObject.getString("std")
-        )
-        AppPrefs.watchedEps.first()[movieId]?.get(entry.id)?.let {
-            entry.storedPosition = it.first
-            entry.watchedPercent = it.second
+        ).also { entry ->
+            AppPrefs.watchedEps.first()[movieId]?.get(entry.id)?.let {
+                entry.storedPosition = it.first
+                entry.watchedPercent = it.second
+            }
         }
-        return entry
     }
 
     private suspend fun toMovieSeries(el : Element) : MovieSeriesInfo {
-        val titleAnchor = el.selectFirst("div.shortstoryHead h2 a")
-        val pageUrl = titleAnchor.attr("href")
-        return toMovieSeries(el, titleAnchor, pageUrl)
+        return el.selectFirst("div.shortstoryHead h2 a").let { titleAnchor ->
+            val pageUrl = titleAnchor.attr("href")
+            toMovieSeries(el, titleAnchor, pageUrl)
+        }
     }
+
     private suspend fun toMovieSeries(el : Element, pageUrl: String) : MovieSeriesInfo {
         val titleAnchor = el.selectFirst("div.shortstoryHead h1")
         return toMovieSeries(el, titleAnchor, pageUrl)
