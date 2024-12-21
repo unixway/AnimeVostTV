@@ -50,18 +50,21 @@ class MainActivity : RequestedActivity() {
             for (id in recent.reversed()) {
                 val cache = AppPrefs.cachedMovie.first()
                 cache[id.toLong()]?.also { page ->
-                    val requestId = AnimeVostProvider.instance.requestMovieSeriesInfo(lifecycleScope, page)
-                    appendRequestId(requestId)
+                    AnimeVostProvider.instance.requestMovieSeriesInfo(lifecycleScope, page).also {
+                        appendRequestId(it)
+                    }
                 }
             }
         }
         run {
-            val requestId = AnimeVostProvider.instance.requestMovieSeriesList(lifecycleScope)
-            appendRequestId(requestId)
+            AnimeVostProvider.instance.requestMovieSeriesList(lifecycleScope).also {
+                appendRequestId(it)
+            }
         }
         for (i in 0 until MovieGenre.entries.size) {
-            val requestId = AnimeVostProvider.instance.requestMovieSeriesListByCategory(lifecycleScope,  MovieGenre.entries[i])
-            appendRequestId(requestId)
+            AnimeVostProvider.instance.requestMovieSeriesListByCategory(lifecycleScope,  MovieGenre.entries[i]).also {
+                appendRequestId(it)
+            }
         }
     }
 }

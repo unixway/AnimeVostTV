@@ -31,8 +31,9 @@ class DetailsActivity : RequestedActivity() {
 
             AnimeVostProvider.instance.requestPlayList(lifecycleScope, mSelectedMovie.id)
             for (related in details.relatedSeries) {
-                val requestId = AnimeVostProvider.instance.requestMovieSeriesInfo(lifecycleScope, related.value)
-                appendRequestId(requestId)
+                AnimeVostProvider.instance.requestMovieSeriesInfo(lifecycleScope, related.value).also {
+                    appendRequestId(it)
+                }
             }
         }
     }
