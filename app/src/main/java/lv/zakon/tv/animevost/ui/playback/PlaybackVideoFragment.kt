@@ -100,6 +100,7 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     fun onEvent(event : VideoSourceFetchedEvent) {
         if (videoDesc.id == event.movieId) {
             Log.i("Player","fetched alternative data source: ${event.videoSource}")
+
             videoUrls = listOf(event.videoSource, videoDesc.hd)
             playVideoFromSource(currentSourceIndex)
 
