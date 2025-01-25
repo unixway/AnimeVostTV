@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.graphics.drawable.Drawable
-import android.util.Log
 import androidx.leanback.app.DetailsSupportFragment
 import androidx.leanback.app.DetailsSupportFragmentBackgroundController
 import androidx.leanback.widget.Action
@@ -35,7 +34,6 @@ import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.ui.playback.PlaybackActivity
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.PlayEntry
-import lv.zakon.tv.animevost.provider.RequestId
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.provider.event.response.MovieSeriesInfoEvent
 import lv.zakon.tv.animevost.provider.event.response.PlaylistFetchedEvent

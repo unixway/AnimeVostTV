@@ -12,6 +12,7 @@ android {
         applicationId = "lv.zakon.tv.animevost"
         minSdk = 30
         targetSdk = 34
+        compileSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -45,4 +46,6 @@ dependencies {
     implementation(libs.kotds)
     implementation(libs.kotdsinit)
     implementation(libs.constraintlayout)
+    implementation(libs.exoplayer)
+    implementation(libs.media3.ui)
 }
