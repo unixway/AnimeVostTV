@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000"
+    tools:deviceIds="tv"
+    tools:context=".PlayerActivity">
+
+    <!-- Плеер с дополнительным контентом -->
+    <FrameLayout
+        android:id="@+id/player_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Элемент для отображения ExoPlayer -->
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/player_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true"
+            app:show_buffering="when_playing"
+            app:use_controller="true" />
+
+        <!-- Текстовый контент поверх плеера -->
+        <LinearLayout
+            android:id="@+id/video_info_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <!-- Название видео -->
+            <TextView
+                android:id="@+id/video_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Название видео"
+                android:textColor="#FFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:shadowColor="#000"
+                android:shadowRadius="4" />
+
+            <!-- Описание видео -->
+            <TextView
+                android:id="@+id/video_description"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Описание видео"
+                android:textColor="#CCC"
+                android:textSize="14sp"
+                android:shadowColor="#000"
+                android:shadowRadius="4" />
+        </LinearLayout>
+    </FrameLayout>
+
+</RelativeLayout>
