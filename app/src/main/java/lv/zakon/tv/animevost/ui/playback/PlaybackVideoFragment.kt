@@ -91,6 +91,8 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
         movieSeriesPageInfo = Util.getExtra(activity!!, DetailsActivity.MOVIE_SERIES_DETAILS)
         videoDesc = Util.getExtra(activity!!, DetailsActivity.PLAY_DESC)
 
+        EventBus.getDefault().register(this)
+
         lifecycleScope.launch {
             AnimeVostProvider.instance.requestAlternativeVideoSource(videoDesc.id)
         }
@@ -121,13 +123,10 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
         if (videoDesc.storedPosition > 0) {
             player!!.seekTo(videoDesc.storedPosition)
         }
+        Log.i("Player", "preparing: $videoSource")
         player!!.prepare()
-        player!!.play()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        EventBus.getDefault().register(this)
+        Log.i("Player", "setPlayWhenReady: $videoSource")
+        player!!.playWhenReady = true
     }
 
     override fun onPause() {
