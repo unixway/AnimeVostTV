@@ -1,7 +1,6 @@
 package lv.zakon.tv.animevost.ui.main
 
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -11,8 +10,6 @@ import lv.zakon.tv.animevost.model.MovieGenre
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
-import lv.zakon.tv.animevost.provider.RequestId
-import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
 import lv.zakon.tv.animevost.ui.common.RequestedActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.EventBusException
@@ -27,11 +24,10 @@ class MainActivity : RequestedActivity() {
 
         try {
             EventBus.builder().logNoSubscriberMessages(false).sendNoSubscriberEvent(false).installDefaultEventBus()
-        } catch (e : EventBusException) {
+        } catch (_ : EventBusException) {
             // application restart causes this
         }
 
-        val requestId = EventCounterGenerator.generate()
         setContentView(R.layout.activity_main)
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
@@ -56,10 +52,8 @@ class MainActivity : RequestedActivity() {
                 }
             }
         }
-        run {
-            AnimeVostProvider.instance.requestMovieSeriesList(lifecycleScope).also {
-                appendRequestId(it)
-            }
+        AnimeVostProvider.instance.requestMovieSeriesList(lifecycleScope).also {
+            appendRequestId(it)
         }
         for (i in 0 until MovieGenre.entries.size) {
             AnimeVostProvider.instance.requestMovieSeriesListByCategory(lifecycleScope,  MovieGenre.entries[i]).also {

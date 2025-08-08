@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
-import lv.zakon.tv.animevost.provider.RequestId
 
 class SearchActivity : FragmentActivity() {
     private val mHandler = Handler(Looper.getMainLooper())

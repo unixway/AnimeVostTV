@@ -1,14 +1,12 @@
 package lv.zakon.tv.animevost.ui.detail
 
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
-import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
 import lv.zakon.tv.animevost.ui.common.RequestedActivity
 
 /**

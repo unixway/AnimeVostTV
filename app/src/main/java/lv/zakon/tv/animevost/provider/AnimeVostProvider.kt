@@ -37,9 +37,8 @@ class AnimeVostProvider private constructor() {
     companion object {
         private const val TAG = "AnimeVostProvider"
         private const val ANIMEVOST_ADDRESS = "https://animevost.org"
-        private const val HD_TRN_SU = "https://hd.trn.su/720/"
         private const val PLAYLIST_URL = "https://api.animevost.org/v1/playlist"
-        private const val FRAME5_URL = ANIMEVOST_ADDRESS + "/frame5.php?play="
+        private const val FRAME5_URL = "$ANIMEVOST_ADDRESS/frame5.php?play="
 
         val instance: AnimeVostProvider = AnimeVostProvider()
     }
@@ -86,9 +85,8 @@ class AnimeVostProvider private constructor() {
 
     suspend fun requestAlternativeVideoSource(id: Long) = withContext(Dispatchers.IO) {
         val htmlData = Jsoup.connect(FRAME5_URL + id).get()
-        val videoSource = htmlData.select("a.butt[download=invoice]")[1].attr("href")
-
-        EventBus.getDefault().post(VideoSourceFetchedEvent(id, videoSource))
+        val videoSources = htmlData.select("a.butt[download=invoice]").map { it.attr("href") }
+        EventBus.getDefault().post(VideoSourceFetchedEvent(id, videoSources[1], videoSources[0]))
     }
 
     private suspend fun requestMovieSeriesListInt(requestId: RequestId, page: Int? = null) {
@@ -254,8 +252,6 @@ class AnimeVostProvider private constructor() {
         }
         return info
     }
-
-    fun getMovieSource(id: Long) : String = "$HD_TRN_SU$id.mp4"
 
     private fun locate(meta: Elements, paramName: String) : String? {
         val el = meta.firstOrNull {

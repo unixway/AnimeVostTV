@@ -1,6 +1,6 @@
 package lv.zakon.tv.animevost.ui.playback
 
-import android.net.Uri
+import android.media.session.PlaybackState
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -31,12 +31,14 @@ import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import androidx.core.net.toUri
 
 
 /** Handles video playback with media controls. */
 class PlaybackVideoFragment : Fragment(), Player.Listener {
 
     private var player: ExoPlayer? = null
+    private lateinit var playerView: PlayerView
     private lateinit var movieSeriesPageInfo: MovieSeriesPageInfo
     private lateinit var videoDesc: PlayEntry
 
@@ -50,7 +52,7 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     @OptIn(UnstableApi::class) override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val playerView: PlayerView = view.findViewById(R.id.player_view)
+        playerView = view.findViewById(R.id.player_view)
         val videoInfoLayout: LinearLayout = view.findViewById(R.id.video_info_layout)
 
         // Инициализация ExoPlayer
@@ -81,8 +83,8 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
             playVideoFromSource(currentSourceIndex);
         } else {
             Toast.makeText(requireContext(), "Ошибка воспроизведения: все источники недоступны", Toast.LENGTH_SHORT).show();
+            playerView.keepScreenOn = false
         }
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,9 +103,10 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onEvent(event : VideoSourceFetchedEvent) {
         if (videoDesc.id == event.movieId) {
-            Log.i("Player","fetched alternative data source: ${event.videoSource}")
+            Log.i("Player","fetched alternative(HD) data source: ${event.videoSourceHD}")
+            Log.i("Player","fetched alternative(SD) data source: ${event.videoSourceSD}")
 
-            videoUrls = listOf(event.videoSource, videoDesc.hd)
+            videoUrls = listOf(event.videoSourceHD, videoDesc.hd, event.videoSourceSD)
             playVideoFromSource(currentSourceIndex)
 
             lifecycleScope.launch {
@@ -117,7 +120,7 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     }
 
     private fun playVideoFromSource(videoSource: String) {
-        val mediaItem: MediaItem = MediaItem.fromUri(Uri.parse(videoSource))
+        val mediaItem: MediaItem = MediaItem.fromUri(videoSource.toUri())
         player!!.setMediaItem(mediaItem)
         Log.i("Player", "storedPosition: ${videoDesc.storedPosition}")
         if (videoDesc.storedPosition > 0) {
@@ -127,18 +130,45 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
         player!!.prepare()
         Log.i("Player", "setPlayWhenReady: $videoSource")
         player!!.playWhenReady = true
+        playerView.keepScreenOn = true
+    }
+
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        super.onPlayWhenReadyChanged(playWhenReady, reason)
+        playerView.keepScreenOn = playWhenReady
+        if (!playWhenReady) {
+            handlePositionMarked(player!!)
+        }
+    }
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        if (playbackState == Player.STATE_ENDED) {
+            playerView.keepScreenOn =  false
+            handlePositionMarked(player!!)
+        }
+        super.onPlaybackStateChanged(playbackState)
     }
 
     override fun onPause() {
         EventBus.getDefault().unregister(this)
         super.onPause()
         player!!.pause()
-        Log.i("VideoPlayer", "onPause: ${player!!.currentPosition}/${player!!.duration}")
+        handlePositionMarked(player!!)
+    }
+
+    private fun handlePositionMarked(player: ExoPlayer) {
+        Log.i("VideoPlayer", "onPause: ${player.currentPosition}/${player.duration}")
         lifecycleScope.launch {
-            val duration = player!!.duration
+            val duration = player.duration
             if (duration > 0) {
-                val percent = (player!!.currentPosition * 100 / duration).toByte()
-                AppPrefs.markWatch(movieSeriesPageInfo.info.id, movieSeriesPageInfo.info.pageUrl, videoDesc.id, player!!.currentPosition, percent)
+                val percent = (player.currentPosition * 100 / duration).toByte()
+                AppPrefs.markWatch(
+                    movieSeriesPageInfo.info.id,
+                    movieSeriesPageInfo.info.pageUrl,
+                    videoDesc.id,
+                    player.currentPosition,
+                    percent
+                )
             }
         }
     }
