@@ -41,6 +41,7 @@ import lv.zakon.tv.animevost.ui.common.RequestedActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import kotlin.math.roundToInt
 
 
 /**
@@ -198,7 +199,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
 
     private fun convertDpToPixel(context: Context, dp: Int): Int {
         val density = context.applicationContext.resources.displayMetrics.density
-        return Math.round(dp.toFloat() * density)
+        return (dp.toFloat() * density).roundToInt()
     }
 
     private inner class ItemViewClickedListener : OnItemViewClickedListener {
@@ -215,7 +216,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
                     val bundle =
                         ActivityOptionsCompat.makeSceneTransitionAnimation(
                             activity!!,
-                            (itemViewHolder?.view as ImageCardView).mainImageView,
+                            (itemViewHolder?.view as ImageCardView).mainImageView!!,
                             DetailsActivity.SHARED_ELEMENT_NAME
                         )
                             .toBundle()

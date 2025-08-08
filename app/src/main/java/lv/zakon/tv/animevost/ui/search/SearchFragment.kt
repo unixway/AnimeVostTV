@@ -114,7 +114,7 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
 
                 val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
                     (activity)!!,
-                    (itemViewHolder.view as ImageCardView).mainImageView,
+                    (itemViewHolder.view as ImageCardView).mainImageView!!,
                     DetailsActivity.SHARED_ELEMENT_NAME
                 ).toBundle()
                 activity!!.startActivity(intent, bundle)

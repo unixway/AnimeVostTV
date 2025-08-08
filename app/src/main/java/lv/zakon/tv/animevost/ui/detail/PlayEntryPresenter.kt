@@ -19,7 +19,7 @@ class PlayEntryPresenter internal constructor() : Presenter() {
     }
 
     @SuppressLint("SetTextI18n")
-    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
+    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         item as PlayEntry
         with(viewHolder.view.findViewById<ImageView>(R.id.preview)) {
             Glide.with(this).load(item.httpsPreview).into(this)
@@ -29,11 +29,9 @@ class PlayEntryPresenter internal constructor() : Presenter() {
         }
     }
 
-    override fun onUnbindViewHolder(viewHolder: ViewHolder?) {
-        viewHolder?.view?.findViewById<ImageView>(R.id.preview)?.setImageDrawable(null)
-        if (viewHolder != null) {
-            setOnClickListener(viewHolder, null)
-        }
+    override fun onUnbindViewHolder(viewHolder: ViewHolder) {
+        viewHolder.view?.findViewById<ImageView>(R.id.preview)?.setImageDrawable(null)
+        setOnClickListener(viewHolder, null)
     }
 
     companion object {

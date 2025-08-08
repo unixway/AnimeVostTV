@@ -39,7 +39,7 @@ class CardPresenter : Presenter() {
         return ViewHolder(cardView)
     }
 
-    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
+    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         val movie = item as MovieSeriesInfo
         val cardView = viewHolder.view as ImageCardView
         val watchedMark = movie.watched.ifc("👁 ", "")
@@ -52,7 +52,7 @@ class CardPresenter : Presenter() {
             .load(movie.cardImageUrl)
             .centerCrop()
             .error(mDefaultCardImage)
-            .into(cardView.mainImageView)
+            .into(cardView.mainImageView!!)
     }
 
     override fun onUnbindViewHolder(viewHolder: ViewHolder) {
