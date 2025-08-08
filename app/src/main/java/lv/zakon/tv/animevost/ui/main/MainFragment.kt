@@ -81,7 +81,8 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun setupUIElements() {
-        title = getString(R.string.browse_title)
+        val version = getString(R.string.app_version)
+        title = getString(R.string.browse_title, version)
         // over title
         headersState = HEADERS_ENABLED
         isHeadersTransitionOnBackEnabled = true
@@ -101,7 +102,7 @@ class MainFragment : BrowseSupportFragment() {
             val rowsAdapter = adapter as ArrayObjectAdapter
 
             if (rowsAdapter.size() == 0 || (rowsAdapter[0] as ListRow).id != 0L) {
-                val listRowAdapter = ArrayObjectAdapter(cardPresenter)
+                val listRowAdapter = ArrayObjectAdapter(cardPresenter!!)
                 listRowAdapter.add(event.info)
                 val header = HeaderItem(0, getString(R.string.recent))
                 rowsAdapter.add(0, ListRow(header, listRowAdapter))
@@ -114,7 +115,7 @@ class MainFragment : BrowseSupportFragment() {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onEvent(event : MovieSeriesFetchedEvent) {
         (activity as RequestedActivity).placeResponseAction(event.requestId) {
-            val listRowAdapter = ArrayObjectAdapter(cardPresenter)
+            val listRowAdapter = ArrayObjectAdapter(cardPresenter!!)
             for (movie in event.series) {
                 listRowAdapter.add(movie)
             }
@@ -152,7 +153,7 @@ class MainFragment : BrowseSupportFragment() {
 
                     val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
                         activity!!,
-                        (itemViewHolder.view as ImageCardView).mainImageView,
+                        (itemViewHolder.view as ImageCardView).mainImageView!!,
                         DetailsActivity.SHARED_ELEMENT_NAME
                     ).toBundle()
                     startActivity(intent, bundle)
