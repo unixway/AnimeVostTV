@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import androidx.leanback.app.BackgroundManager
 import androidx.leanback.app.BrowseSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -55,8 +56,8 @@ class MainFragment : BrowseSupportFragment() {
     private var mBackgroundUri: String? = null
     private var cardPresenter: CardPresenter? = null
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         prepareBackgroundManager()
 
@@ -75,9 +76,9 @@ class MainFragment : BrowseSupportFragment() {
 
     private fun prepareBackgroundManager() {
         mBackgroundManager = BackgroundManager.getInstance(activity)
-        mBackgroundManager.attach(activity!!.window)
-        mDefaultBackground = ContextCompat.getDrawable(context!!, R.drawable.default_background)
-        mBounds = activity!!.windowManager.currentWindowMetrics.bounds
+        mBackgroundManager.attach(requireActivity().window)
+        mDefaultBackground = ContextCompat.getDrawable(requireContext(), R.drawable.default_background)
+        mBounds = requireActivity().windowManager.currentWindowMetrics.bounds
     }
 
     private fun setupUIElements() {
@@ -88,9 +89,9 @@ class MainFragment : BrowseSupportFragment() {
         isHeadersTransitionOnBackEnabled = true
 
         // set fastLane (or headers) background color
-        brandColor = ContextCompat.getColor(context!!, R.color.fastlane_background)
+        brandColor = ContextCompat.getColor(requireContext(), R.color.fastlane_background)
         // set search icon color
-        searchAffordanceColor = ContextCompat.getColor(context!!, R.color.search_opaque)
+        searchAffordanceColor = ContextCompat.getColor(requireContext(), R.color.search_opaque)
 
         adapter = ArrayObjectAdapter(ListRowPresenter())
         cardPresenter = CardPresenter()
@@ -183,7 +184,7 @@ class MainFragment : BrowseSupportFragment() {
     private fun updateBackground(uri: String?) {
         val width = mBounds.width()
         val height = mBounds.height()
-        Glide.with(context!!)
+        Glide.with(requireContext())
                 .load(uri)
                 .centerCrop()
                 .error(mDefaultBackground)

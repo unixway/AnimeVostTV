@@ -14,7 +14,6 @@ data class MovieSeriesPageInfo(
 ) : Serializable {
 
     companion object {
-        @Suppress("ConstPropertyName")
         internal const val serialVersionUID = 1L
     }
 }

@@ -107,27 +107,29 @@ class AnimeVostProvider private constructor() {
 
     suspend fun getMovieSeriesDetails(info: MovieSeriesInfo) : MovieSeriesPageInfo = withContext(Dispatchers.IO) {
         val htmlData = Jsoup.connect(info.pageUrl).get()
-        val el = htmlData.selectFirst("div#dle-content").selectFirst("div.shortstory")
+        val el = htmlData.selectFirst("div#dle-content")!!.selectFirst("div.shortstory")!!
         val meta = el.select("div.shortstoryContent p")
         var last = el.selectFirst("div.shortstoryContent p span[itemprop=\"description\"]")
         if (last == null) {
             last = meta.last()
-            last.child(0).remove()
+            last!!.child(0).remove()
         }
         val description = last.html()
         val related = htmlData.selectFirst("div.text_spoiler")?.select("li")?.associate {
-            val href = ANIMEVOST_ADDRESS + it.selectFirst("a").attr("href")
+            val href = ANIMEVOST_ADDRESS + it.selectFirst("a")!!.attr("href")
             val title = it.text()
             Pair(title, href)
         }?:emptyMap<String, String>()
         val images = htmlData.selectFirst("fieldSet.skrin")?.select("img")?.map { ANIMEVOST_ADDRESS + it.attr("src") }?.toTypedArray()
         var videosJsonStr = htmlData.select("script").find { it.data().contains("var data = ") }!!.data().lines().find { it.contains("var data = ") }!!
         val stopIdx = if (videosJsonStr.endsWith(",};")) 3 else 2
-        videosJsonStr = videosJsonStr.substring(12, videosJsonStr.length - stopIdx) + '}'
-        val videosJson = JSONObject(videosJsonStr)
         val videos = mutableMapOf<String, Long>()
-        for (key in videosJson.keys()) {
-            videos[key] = videosJson.getLong(key)
+        videosJsonStr = videosJsonStr.substring(12, videosJsonStr.length - stopIdx) + '}'
+        if (videosJsonStr != "}") {
+            val videosJson = JSONObject(videosJsonStr)
+            for (key in videosJson.keys()) {
+                videos[key] = videosJson.getLong(key)
+            }
         }
         val episodesCount = locate(meta, "Количество серий")
         val director = locate(meta, "Директор")
@@ -140,7 +142,7 @@ class AnimeVostProvider private constructor() {
 
     private suspend fun requestMovieSeriesInfoInt(requestId: RequestId, pageAddr: String) = withContext(Dispatchers.IO) {
         val htmlData = Jsoup.connect(pageAddr).get()
-        val info = toMovieSeries(htmlData.selectFirst("div#dle-content").selectFirst("div.shortstory"), pageAddr)
+        val info = toMovieSeries(htmlData.selectFirst("div#dle-content")!!.selectFirst("div.shortstory")!!, pageAddr)
         EventBus.getDefault().post(MovieSeriesInfoEvent(requestId, info))
     }
 
@@ -191,7 +193,7 @@ class AnimeVostProvider private constructor() {
     }
 
     private suspend fun getMovieSeriesListFromHtmlData(htmlData: Document) : List<MovieSeriesInfo> = withContext(Dispatchers.IO) {
-        val unparsedMovies = htmlData.selectFirst("div#dle-content").select("div.shortstory")
+        val unparsedMovies = htmlData.selectFirst("div#dle-content")!!.select("div.shortstory")
         val acc = mutableListOf<MovieSeriesInfo>()
         for (el in unparsedMovies) {
             acc.add(toMovieSeries(el))
@@ -215,13 +217,13 @@ class AnimeVostProvider private constructor() {
 
     private suspend fun toMovieSeries(el : Element) : MovieSeriesInfo {
         return el.selectFirst("div.shortstoryHead h2 a").let { titleAnchor ->
-            val pageUrl = titleAnchor.attr("href")
+            val pageUrl = titleAnchor!!.attr("href")
             toMovieSeries(el, titleAnchor, pageUrl)
         }
     }
 
     private suspend fun toMovieSeries(el : Element, pageUrl: String) : MovieSeriesInfo {
-        val titleAnchor = el.selectFirst("div.shortstoryHead h1")
+        val titleAnchor = el.selectFirst("div.shortstoryHead h1")!!
         return toMovieSeries(el, titleAnchor, pageUrl)
     }
 
@@ -255,7 +257,7 @@ class AnimeVostProvider private constructor() {
 
     private fun locate(meta: Elements, paramName: String) : String? {
         val el = meta.firstOrNull {
-            it.children().isNotEmpty() && it.child(0)?.text()?.startsWith(paramName) ?: false
+            it.children().isNotEmpty() && it.child(0).text().startsWith(paramName)
         }
         if (el == null) {
             return null

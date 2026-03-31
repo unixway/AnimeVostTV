@@ -77,7 +77,7 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
 
 
     fun focusOnSearch() {
-        view!!.findViewById<View>(androidx.leanback.R.id.lb_search_bar).requestFocus()
+        requireView().findViewById<View>(androidx.leanback.R.id.lb_search_bar).requestFocus()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

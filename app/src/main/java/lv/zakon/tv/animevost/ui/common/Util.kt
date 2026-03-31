@@ -7,7 +7,6 @@ class Util {
         @Suppress("UNCHECKED_CAST")
         fun <T> getExtra(activity: FragmentActivity, name: String): T =
             activity.intent!!.getSerializableExtra(name) as T
-
     }
 
     object IfExt {

@@ -1,19 +1,19 @@
 [versions]
-agp = "8.11.1"
-kotlin = "1.9.0"
+agp = "8.13.2"
+kotlin = "2.1.0"
 #noinspection GradleDependency
 coreKtx = "1.6.0" # android 11 compatability
 leanback = "1.2.0"
-glide = "4.11.0"
-jsoup = "1.11.2"
+glide = "5.0.5"
+jsoup = "1.22.1"
 eventbus = "3.3.1"
 #noinspection GradleDependency
 lifecycle = "2.3.1" # android 11 compatability
-coroutines = "1.9.0"
+coroutines = "1.10.2"
 ktor = "2.3.11"
 kotds = "1.0"
 constraintlayout = "2.2.1"
-media3 = "1.6.1"
+media3 = "1.9.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

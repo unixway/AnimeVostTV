@@ -1,6 +1,5 @@
 package lv.zakon.tv.animevost.ui.playback
 
-import android.media.session.PlaybackState
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -78,11 +77,11 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
 
     override fun onPlayerError(error: PlaybackException) {
         if (currentSourceIndex < videoUrls!!.size - 1) {
-            currentSourceIndex++;
-            Toast.makeText(requireContext(), "Переключение на резервный источник", Toast.LENGTH_SHORT).show();
-            playVideoFromSource(currentSourceIndex);
+            currentSourceIndex++
+            Toast.makeText(requireContext(), "Переключение на резервный источник", Toast.LENGTH_SHORT).show()
+            playVideoFromSource(currentSourceIndex)
         } else {
-            Toast.makeText(requireContext(), "Ошибка воспроизведения: все источники недоступны", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Ошибка воспроизведения: все источники недоступны", Toast.LENGTH_SHORT).show()
             playerView.keepScreenOn = false
         }
     }
@@ -90,8 +89,8 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        movieSeriesPageInfo = Util.getExtra(activity!!, DetailsActivity.MOVIE_SERIES_DETAILS)
-        videoDesc = Util.getExtra(activity!!, DetailsActivity.PLAY_DESC)
+        movieSeriesPageInfo = Util.getExtra(requireActivity(), DetailsActivity.MOVIE_SERIES_DETAILS)
+        videoDesc = Util.getExtra(requireActivity(), DetailsActivity.PLAY_DESC)
 
         EventBus.getDefault().register(this)
 
@@ -147,6 +146,15 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
             handlePositionMarked(player!!)
         }
         super.onPlaybackStateChanged(playbackState)
+    }
+
+    override fun onPositionDiscontinuity(
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int
+    ) {
+        super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+        playerView.keepScreenOn = true
     }
 
     override fun onPause() {
