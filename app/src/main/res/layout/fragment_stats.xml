@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#111111"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="СТАТИСТИКА ПРОИЗВОДИТЕЛЬНОСТИ"
+        android:textColor="#FFEB3B"
+        android:textSize="24sp"
+        android:paddingBottom="16dp"
+        android:gravity="center" />
+
+    <!-- Шапка таблицы -->
+    <include layout="@layout/item_stats_row" android:id="@+id/stats_header" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/stats_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingTop="8dp"
+        android:clipToPadding="false" />
+</LinearLayout>
