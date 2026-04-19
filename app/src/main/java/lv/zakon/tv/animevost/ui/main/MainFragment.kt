@@ -109,7 +109,12 @@ class MainFragment : BrowseSupportFragment() {
 
     private fun prepareBackgroundManager() {
         mBackgroundManager = BackgroundManager.getInstance(activity)
-        mBackgroundManager.attach(requireActivity().window)
+        if (!mBackgroundManager.isAttached) {
+            mBackgroundManager.attach(requireActivity().window)
+        }
+        // Запрещаем Leanback очищать фон при Stop (уходе в детали)
+        mBackgroundManager.isAutoReleaseOnStop = false
+
         mDefaultBackground = ContextCompat.getDrawable(requireContext(), R.drawable.default_background)
         mBounds = requireActivity().windowManager.currentWindowMetrics.bounds
     }

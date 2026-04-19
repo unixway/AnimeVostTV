@@ -73,7 +73,10 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
 
     private fun prepareBackgroundManager() {
         mBackgroundManager = BackgroundManager.getInstance(requireActivity())
-        mBackgroundManager.attach(requireActivity().window)
+        if (!mBackgroundManager.isAttached) {
+            mBackgroundManager.attach(requireActivity().window)
+        }
+        mBackgroundManager.isAutoReleaseOnStop = false
         mDefaultBackground = ContextCompat.getDrawable(requireContext(), R.drawable.default_background)
         mBounds = requireActivity().windowManager.currentWindowMetrics.bounds
     }
