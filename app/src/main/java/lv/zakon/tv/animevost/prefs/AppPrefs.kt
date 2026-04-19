@@ -106,7 +106,7 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         override fun toJSON(value: Map<Long, Map<Long, Pair<Long,Byte>>>): JSONObject =
             JSONObject(value.map { Pair(it.key.toString(),
                 JSONObject(it.value.map { ep -> Pair(ep.key.toString(),
-                    JSONArray(arrayOf(ep.value.first, ep.value.second))) }.toMap())) }.toMap())
+                    JSONArray(arrayOf<Number>(ep.value.first, ep.value.second))) }.toMap())) }.toMap())
 
         override fun fromJSON(serialized: JSONObject): Map<Long, Map<Long, Pair<Long,Byte>>> {
             val result = LinkedHashMap<Long, Map<Long, Pair<Long, Byte>>>()

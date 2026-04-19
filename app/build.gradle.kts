@@ -23,7 +23,7 @@ android {
         minSdk = 30
         targetSdk = 34
         versionCode = 1
-        versionName = "0.64"
+        versionName = "0.641"
         resValue("string", "app_version", "\"v$versionName\"")
     }
 
