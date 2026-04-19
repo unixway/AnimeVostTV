@@ -41,6 +41,9 @@
         <activity
             android:name=".ui.error.BrowseErrorActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.stats.StatsActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
