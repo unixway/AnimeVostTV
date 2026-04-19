@@ -1,18 +1,20 @@
 [versions]
 agp = "8.13.2"
+#noinspection NewerVersionAvailable
 kotlin = "2.1.0"
 #noinspection GradleDependency
 coreKtx = "1.6.0" # android 11 compatability
 leanback = "1.2.0"
 glide = "5.0.5"
 jsoup = "1.22.1"
-eventbus = "3.3.1"
 #noinspection GradleDependency
 lifecycle = "2.3.1" # android 11 compatability
 coroutines = "1.10.2"
+#noinspection NewerVersionAvailable
 ktor = "2.3.11"
 kotds = "1.0"
 constraintlayout = "2.2.1"
+#noinspection GradleDependency
 media3 = "1.9.2"
 
 [libraries]
@@ -20,7 +22,6 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-leanback = { group = "androidx.leanback", name = "leanback", version.ref = "leanback" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
-eventbus = { group = "org.greenrobot", name = "eventbus", version.ref = "eventbus" }
 lifecycle = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 ktorcore = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
@@ -34,4 +35,3 @@ media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "medi
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-
