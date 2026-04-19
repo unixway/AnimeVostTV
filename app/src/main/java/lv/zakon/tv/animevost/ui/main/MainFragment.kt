@@ -2,6 +2,9 @@ package lv.zakon.tv.animevost.ui.main
 
 import java.util.Timer
 import java.util.TimerTask
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 import android.content.Intent
 import android.graphics.Rect
@@ -9,7 +12,11 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.leanback.app.BackgroundManager
 import androidx.leanback.app.BrowseSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -22,29 +29,31 @@ import androidx.leanback.widget.Row
 import androidx.leanback.widget.RowPresenter
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import android.widget.Toast
 import androidx.leanback.widget.HeaderItem
 import androidx.leanback.widget.ListRow
+import androidx.lifecycle.lifecycleScope
 
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
-import lv.zakon.tv.animevost.ui.error.BrowseErrorActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.ui.CardPresenter
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.R
-import lv.zakon.tv.animevost.provider.RequestId
+import lv.zakon.tv.animevost.model.MovieGenre
+import lv.zakon.tv.animevost.prefs.AppPrefs
+import lv.zakon.tv.animevost.provider.AnimeVostProvider
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.isIt
 import lv.zakon.tv.animevost.ui.search.SearchActivity
-import lv.zakon.tv.animevost.provider.event.response.MovieSeriesFetchedEvent
-import lv.zakon.tv.animevost.provider.event.response.MovieSeriesInfoEvent
-import lv.zakon.tv.animevost.ui.common.RequestedActivity
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
- * Loads a grid of cards with movies to browse.
+ * Основной фрагмент для отображения сетки карточек с аниме.
  */
 class MainFragment : BrowseSupportFragment() {
 
@@ -55,23 +64,47 @@ class MainFragment : BrowseSupportFragment() {
     private var mBackgroundTimer: Timer? = null
     private var mBackgroundUri: String? = null
     private var cardPresenter: CardPresenter? = null
+    private lateinit var mRowsAdapter: ArrayObjectAdapter
+
+    private val mPagesMap = mutableMapOf<Long, Int>()
+    private val mLoadingMap = mutableMapOf<Long, Boolean>()
+    private val mEndOfDataMap = mutableMapOf<Long, Boolean>()
+
+    private var mLogText: TextView? = null
+    private var mLogContainer: View? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         prepareBackgroundManager()
-
         setupUIElements()
-
         setupEventListeners()
 
-        EventBus.getDefault().register(this)
+        mLogText = requireActivity().findViewById(R.id.log_text)
+        mLogContainer = requireActivity().findViewById(R.id.log_container)
+
+        val version = getString(R.string.app_version)
+        addLog("ЗАПУСК: AnimeVostTV $version")
+
+        loadData()
     }
 
-    override fun onDestroy() {
-        EventBus.getDefault().unregister(this)
-        super.onDestroy()
-        mBackgroundTimer?.cancel()
+    private fun addLog(msg: String) {
+        val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+        mHandler.post {
+            mLogText?.append("[$time] $msg\n")
+            val scrollView = mLogContainer as? ScrollView
+            scrollView?.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+        }
+    }
+
+    private fun hideLog() {
+        mHandler.postDelayed({
+            if (mLogContainer?.visibility == View.VISIBLE) {
+                addLog("СИСТЕМА: Интерфейс готов.")
+                mLogContainer?.visibility = View.GONE
+            }
+        }, TimeUnit.SECONDS.toMillis(1))
     }
 
     private fun prepareBackgroundManager() {
@@ -84,57 +117,143 @@ class MainFragment : BrowseSupportFragment() {
     private fun setupUIElements() {
         val version = getString(R.string.app_version)
         title = getString(R.string.browse_title, version)
-        // over title
         headersState = HEADERS_ENABLED
         isHeadersTransitionOnBackEnabled = true
 
-        // set fastLane (or headers) background color
         brandColor = ContextCompat.getColor(requireContext(), R.color.fastlane_background)
-        // set search icon color
         searchAffordanceColor = ContextCompat.getColor(requireContext(), R.color.search_opaque)
 
-        adapter = ArrayObjectAdapter(ListRowPresenter())
+        mRowsAdapter = ArrayObjectAdapter(ListRowPresenter())
+        adapter = mRowsAdapter
         cardPresenter = CardPresenter()
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onEvent(event : MovieSeriesInfoEvent) {
-        (activity as RequestedActivity).placeResponseAction(event.requestId) {
-            val rowsAdapter = adapter as ArrayObjectAdapter
+    private fun loadData() {
+        addLog("СИСТЕМА: Запуск очередей загрузки...")
 
-            if (rowsAdapter.size() == 0 || (rowsAdapter[0] as ListRow).id != 0L) {
-                val listRowAdapter = ArrayObjectAdapter(cardPresenter!!)
-                listRowAdapter.add(event.info)
-                val header = HeaderItem(0, getString(R.string.recent))
-                rowsAdapter.add(0, ListRow(header, listRowAdapter))
-                return@placeResponseAction
+        val barrier = CountDownLatch(2 + MovieGenre.entries.size)
+
+        // 1. Недавние
+        lifecycleScope.launch {
+            try {
+                val recentIds = AppPrefs.recent.first()
+                if (recentIds.isEmpty()) {
+                    barrier.countDown()
+                    return@launch
+                }
+
+                addLog("Недавние: [Локально]: Чтение истории из БД...")
+                val cache = AppPrefs.cachedMovie.first()
+                val reversedIds = recentIds.reversed()
+                addLog("Недавние: [Локально]: Прочитал истории из БД (${reversedIds.size} шт.)")
+
+                val deferreds = reversedIds.map { idStr ->
+                    async {
+                        try {
+                            val id = idStr.toLongOrNull() ?: return@async null
+                            val pageUrl = cache[id] ?: return@async null
+                            AnimeVostProvider.instance.getMovieSeriesInfo(pageUrl)
+                        } catch (e: Exception) { null }
+                    }
+                }
+                addLog("Недавние: [Сеть]: Запросил инфо по истории (${reversedIds.size} шт.)")
+                barrier.countDown()
+
+                var recentAdapter: ArrayObjectAdapter? = null
+                for (deferred in deferreds) {
+                    val info = deferred.await()
+                    if (info != null) {
+                        if (recentAdapter == null) {
+                            recentAdapter = ArrayObjectAdapter(cardPresenter!!)
+                            insertRowSorted(ListRow(HeaderItem(0, getString(R.string.recent)), recentAdapter))
+                            mEndOfDataMap[0L] = true
+                        }
+                        recentAdapter.add(info)
+                    }
+                }
+                addLog("Недавние: [Сеть]: История загружена (${recentAdapter?.size()} шт.)")
+                hideLog()
+            } catch (e: Exception) {
+                addLog("Недавние: [Локально]: ОШИБКА")
             }
-            ((rowsAdapter[0] as ListRow).adapter as ArrayObjectAdapter).add(event.info)
+        }
+
+        // 2. Последние
+        lifecycleScope.launch {
+            try {
+                val series = AnimeVostProvider.instance.getMovieSeriesList { status ->
+                    if (status.contains("Запрос")){
+                        barrier.countDown()
+                    }
+                    addLog("Последние: $status")
+                }
+                if (series.isNotEmpty()) {
+                    addLog("Последние: Загружено (${series.size} шт.)")
+                    hideLog()
+                    val adapter = ArrayObjectAdapter(cardPresenter!!)
+                    adapter.addAll(0, series)
+                    insertRowSorted(ListRow(HeaderItem(1, getString(R.string.last)), adapter))
+                    mPagesMap[1L] = 1
+                    if (series.size < PAGE_SIZE) mEndOfDataMap[1L] = true
+                }
+            } catch (e: Exception) {
+                addLog("Последние: ОШИБКА (${e.message})")
+            }
+        }
+
+        // 3. Жанры
+        for (genre in MovieGenre.entries) {
+            lifecycleScope.launch {
+                try {
+                    val series = AnimeVostProvider.instance.getMovieSeriesListByCategory(genre) { status ->
+                        if (status.contains("Запрос")){
+                            barrier.countDown()
+                        }
+                        // Логируем только важные этапы для каждого жанра
+
+                        if (status.contains("Запрос") || status.contains("Разбор")) {
+                            addLog("Жанр «${genre.l10n}»: $status")
+                        }
+                    }
+                    if (series.isNotEmpty()) {
+                        addLog("Жанр «${genre.l10n}»: Готово")
+                        hideLog()
+                        val headerId = (2 + genre.ordinal).toLong()
+                        val adapter = ArrayObjectAdapter(cardPresenter!!)
+                        adapter.addAll(0, series)
+                        insertRowSorted(ListRow(HeaderItem(headerId, genre.l10n), adapter))
+                        mPagesMap[headerId] = 1
+                        if (series.size < PAGE_SIZE) mEndOfDataMap[headerId] = true
+                    }
+                } catch (e: Exception) {
+                }
+            }
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            barrier.await()
+            addLog("Ожидание ответов")
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onEvent(event : MovieSeriesFetchedEvent) {
-        (activity as RequestedActivity).placeResponseAction(event.requestId) {
-            val listRowAdapter = ArrayObjectAdapter(cardPresenter!!)
-            for (movie in event.series) {
-                listRowAdapter.add(movie)
+    private fun insertRowSorted(newRow: ListRow) {
+        val newId = newRow.headerItem.id
+        var index = 0
+        for (i in 0 until mRowsAdapter.size()) {
+            val currentRow = mRowsAdapter[i] as ListRow
+            if (currentRow.headerItem.id > newId) {
+                break
             }
-            val header = if (event.genre == null) {
-                HeaderItem(1, getString(R.string.last))
-            } else {
-                HeaderItem(2 + event.genre.ordinal.toLong(), event.genre.l10n)
-            }
-            val rowsAdapter = adapter as ArrayObjectAdapter
-            rowsAdapter.add(ListRow(header, listRowAdapter))
+            if (currentRow.headerItem.id == newId) return
+            index++
         }
+        mRowsAdapter.add(index, newRow)
     }
 
     private fun setupEventListeners() {
         setOnSearchClickedListener {
-                val intent = Intent(activity, SearchActivity::class.java)
-                startActivity(intent)
-       }
+            startActivity(Intent(activity, SearchActivity::class.java))
+        }
 
         onItemViewClickedListener = ItemViewClickedListener()
         onItemViewSelectedListener = ItemViewSelectedListener()
@@ -147,26 +266,16 @@ class MainFragment : BrowseSupportFragment() {
                 rowViewHolder: RowPresenter.ViewHolder,
                 row: Row) {
 
-            when(item) {
-                is MovieSeriesInfo -> {
-                    val intent = Intent(context!!, DetailsActivity::class.java)
-                    intent.putExtra(DetailsActivity.MOVIE, item)
+            if (item is MovieSeriesInfo) {
+                val intent = Intent(requireContext(), DetailsActivity::class.java)
+                intent.putExtra(DetailsActivity.MOVIE, item)
 
-                    val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
-                        activity!!,
-                        (itemViewHolder.view as ImageCardView).mainImageView!!,
-                        DetailsActivity.SHARED_ELEMENT_NAME
-                    ).toBundle()
-                    startActivity(intent, bundle)
-                }
-                is String -> {
-                    if (item.contains(getString(R.string.error_fragment))) {
-                        val intent = Intent(context!!, BrowseErrorActivity::class.java)
-                        startActivity(intent)
-                    } else {
-                        Toast.makeText(context!!, item, Toast.LENGTH_SHORT).show()
-                    }
-                }
+                val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    requireActivity(),
+                    (itemViewHolder.view as ImageCardView).mainImageView!!,
+                    DetailsActivity.SHARED_ELEMENT_NAME
+                ).toBundle()
+                startActivity(intent, bundle)
             }
         }
     }
@@ -177,6 +286,47 @@ class MainFragment : BrowseSupportFragment() {
             if (item is MovieSeriesInfo) {
                 mBackgroundUri = item.cardImageUrl
                 startBackgroundTimer()
+
+                if (row is ListRow) {
+                    val adapter = row.adapter as ArrayObjectAdapter
+                    if (adapter.indexOf(item) >= adapter.size() - SIGN_LOADMORE) {
+                        loadNextPage(row)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun loadNextPage(row: ListRow) {
+        val headerId = row.headerItem.id
+        if (mLoadingMap[headerId].isIt() || mEndOfDataMap[headerId].isIt()) return
+        val currentPage = mPagesMap[headerId] ?: return
+        val nextPage = currentPage + 1
+        mLoadingMap[headerId] = true
+
+        lifecycleScope.launch {
+            try {
+                val series = when {
+                    headerId == 1L -> AnimeVostProvider.instance.getMovieSeriesList(nextPage)
+                    headerId >= 2L -> {
+                        val genreIndex = (headerId - 2).toInt()
+                        val genre = MovieGenre.entries[genreIndex]
+                        AnimeVostProvider.instance.getMovieSeriesListByCategory(genre, nextPage)
+                    }
+                    else -> emptyList()
+                }
+
+                if (series.isNotEmpty()) {
+                    val adapter = row.adapter as ArrayObjectAdapter
+                    series.forEach { adapter.add(it) }
+                    mPagesMap[headerId] = nextPage
+                    if (series.size < PAGE_SIZE) mEndOfDataMap[headerId] = true
+                } else {
+                    mEndOfDataMap[headerId] = true
+                }
+            } catch (e: Exception) {
+            } finally {
+                mLoadingMap[headerId] = false
             }
         }
     }
@@ -194,11 +344,8 @@ class MainFragment : BrowseSupportFragment() {
                                                          transition: Transition<in Drawable>?) {
                                 mBackgroundManager.drawable = drawable
                             }
-
                             override fun onLoadCleared(placeholder: Drawable?) {
-                                if (mBackgroundManager.drawable != null) {
-                                    mBackgroundManager.drawable = null
-                                }
+                                mBackgroundManager.drawable = null
                             }
                         })
         mBackgroundTimer?.cancel()
@@ -217,9 +364,9 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     companion object {
-        @Suppress("unused")
         private const val TAG = "MainFragment"
-
         private const val BACKGROUND_UPDATE_DELAY = 300
+        private const val PAGE_SIZE = 10
+        private const val SIGN_LOADMORE = 2
     }
 }

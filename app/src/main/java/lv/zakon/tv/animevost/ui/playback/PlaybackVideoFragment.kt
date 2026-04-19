@@ -23,15 +23,11 @@ import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
-import lv.zakon.tv.animevost.provider.event.response.VideoSourceFetchedEvent
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
 import androidx.core.net.toUri
-
+import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifc
 
 /** Handles video playback with media controls. */
 class PlaybackVideoFragment : Fragment(), Player.Listener {
@@ -62,21 +58,39 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
         (view.findViewById<TextView>(R.id.video_description)!!).text = description
 
         Log.i("Player", "playing ${videoDesc.name} (${movieSeriesPageInfo.info.title})")
-        // Обработка видимости контролов
+
         playerView.addOnLayoutChangeListener { _: View, _: Int, _: Int, _: Int, _: Int, _: Int, _: Int, _: Int, _: Int ->
-            val controlsVisible: Boolean = playerView.isControllerFullyVisible
-            if (controlsVisible) {
-                videoInfoLayout.visibility = View.VISIBLE
-            } else {
-                videoInfoLayout.visibility = View.GONE
-            }
+            videoInfoLayout.visibility = playerView.isControllerFullyVisible.ifc(View.VISIBLE, View.GONE)
         }
 
         player!!.addListener(this)
+
+        loadSourcesAndPlay()
+    }
+
+    private fun loadSourcesAndPlay() {
+        lifecycleScope.launch {
+            try {
+                val alternative = AnimeVostProvider.instance.getAlternativeVideoSource(videoDesc.id)
+
+                videoUrls = if (alternative != null) {
+                    listOf(alternative.first, videoDesc.hd, alternative.second)
+                } else {
+                    listOf(videoDesc.hd, videoDesc.std)
+                }
+
+                playVideoFromSource(currentSourceIndex)
+
+                AppPrefs.markWatch(movieSeriesPageInfo.info.id, movieSeriesPageInfo.info.pageUrl, videoDesc.id)
+            } catch (e: Exception) {
+                Log.e("Player", "Error loading video sources", e)
+                Toast.makeText(requireContext(), "Ошибка загрузки источников", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onPlayerError(error: PlaybackException) {
-        if (currentSourceIndex < videoUrls!!.size - 1) {
+        if (videoUrls != null && currentSourceIndex < videoUrls!!.size - 1) {
             currentSourceIndex++
             Toast.makeText(requireContext(), "Переключение на резервный источник", Toast.LENGTH_SHORT).show()
             playVideoFromSource(currentSourceIndex)
@@ -88,46 +102,21 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         movieSeriesPageInfo = Util.getExtra(requireActivity(), DetailsActivity.MOVIE_SERIES_DETAILS)
         videoDesc = Util.getExtra(requireActivity(), DetailsActivity.PLAY_DESC)
-
-        EventBus.getDefault().register(this)
-
-        lifecycleScope.launch {
-            AnimeVostProvider.instance.requestAlternativeVideoSource(videoDesc.id)
-        }
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onEvent(event : VideoSourceFetchedEvent) {
-        if (videoDesc.id == event.movieId) {
-            Log.i("Player","fetched alternative(HD) data source: ${event.videoSourceHD}")
-            Log.i("Player","fetched alternative(SD) data source: ${event.videoSourceSD}")
-
-            videoUrls = listOf(event.videoSourceHD, videoDesc.hd, event.videoSourceSD)
-            playVideoFromSource(currentSourceIndex)
-
-            lifecycleScope.launch {
-                AppPrefs.markWatch(movieSeriesPageInfo.info.id, movieSeriesPageInfo.info.pageUrl, videoDesc.id)
-            }
-        }
     }
 
     private fun playVideoFromSource(idx: Int) {
-        playVideoFromSource(videoUrls!![idx])
+        videoUrls?.getOrNull(idx)?.let { playVideoFromSource(it) }
     }
 
     private fun playVideoFromSource(videoSource: String) {
         val mediaItem: MediaItem = MediaItem.fromUri(videoSource.toUri())
         player!!.setMediaItem(mediaItem)
-        Log.i("Player", "storedPosition: ${videoDesc.storedPosition}")
         if (videoDesc.storedPosition > 0) {
             player!!.seekTo(videoDesc.storedPosition)
         }
-        Log.i("Player", "preparing: $videoSource")
         player!!.prepare()
-        Log.i("Player", "setPlayWhenReady: $videoSource")
         player!!.playWhenReady = true
         playerView.keepScreenOn = true
     }
@@ -158,14 +147,12 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     }
 
     override fun onPause() {
-        EventBus.getDefault().unregister(this)
         super.onPause()
-        player!!.pause()
-        handlePositionMarked(player!!)
+        player?.pause()
+        player?.let { handlePositionMarked(it) }
     }
 
     private fun handlePositionMarked(player: ExoPlayer) {
-        Log.i("VideoPlayer", "onPause: ${player.currentPosition}/${player.duration}")
         lifecycleScope.launch {
             val duration = player.duration
             if (duration > 0) {

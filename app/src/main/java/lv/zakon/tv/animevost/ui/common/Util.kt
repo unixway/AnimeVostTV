@@ -12,5 +12,6 @@ class Util {
     object IfExt {
         inline fun <T, R> T?.ifData(fb: R, block: (T) -> R): R = if (this == null) fb else block(this)
         fun <R> Boolean.ifc(trueBranch: R, falseBranch: R): R = if (this) trueBranch else falseBranch
+        fun Boolean?.isIt(): Boolean = this == true
     }
 }

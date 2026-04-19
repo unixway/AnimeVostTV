@@ -1,8 +1,6 @@
 package lv.zakon.tv.animevost.ui.error
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -11,12 +9,15 @@ import android.widget.FrameLayout
 import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.R
-import lv.zakon.tv.animevost.provider.event.request.EventCounterGenerator
 import lv.zakon.tv.animevost.ui.main.MainFragment
 
 /**
- * BrowseErrorActivity shows how to use ErrorFragment.
+ * BrowseErrorActivity показывает, как использовать ErrorFragment.
+ * Используется в демонстрационных целях.
  */
 class BrowseErrorActivity : FragmentActivity() {
 
@@ -28,41 +29,47 @@ class BrowseErrorActivity : FragmentActivity() {
         setContentView(R.layout.activity_main)
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
-                    .replace(R.id.main_browse_fragment, MainFragment())
-                    .commitNow()
+                .replace(R.id.main_browse_fragment, MainFragment())
+                .commitNow()
         }
         testError()
     }
 
     private fun testError() {
         mErrorFragment = ErrorFragment()
-        supportFragmentManager
-                .beginTransaction()
-                .add(R.id.main_browse_fragment, mErrorFragment)
-                .commit()
+        supportFragmentManager.beginTransaction()
+            .add(R.id.main_browse_fragment, mErrorFragment)
+            .commit()
 
         mSpinnerFragment = SpinnerFragment()
-        supportFragmentManager
-                .beginTransaction()
-                .add(R.id.main_browse_fragment, mSpinnerFragment)
-                .commit()
+        supportFragmentManager.beginTransaction()
+            .add(R.id.main_browse_fragment, mSpinnerFragment)
+            .commit()
 
-        val handler = Handler(Looper.myLooper()!!)
-        handler.postDelayed({
-            supportFragmentManager
-                    .beginTransaction()
+        // Заменяем Handler на Coroutine
+        lifecycleScope.launch {
+            delay(TIMER_DELAY)
+            if (!isFinishing) {
+                supportFragmentManager.beginTransaction()
                     .remove(mSpinnerFragment)
                     .commit()
-            mErrorFragment.setErrorContent()
-        }, TIMER_DELAY)
+                mErrorFragment.setErrorContent()
+            }
+        }
     }
 
     class SpinnerFragment : Fragment() {
-        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                                  savedInstanceState: Bundle?): View {
+        override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?,
+            savedInstanceState: Bundle?
+        ): View {
             val progressBar = ProgressBar(container?.context)
             if (container is FrameLayout) {
-                val layoutParams = FrameLayout.LayoutParams(SPINNER_WIDTH, SPINNER_HEIGHT, Gravity.CENTER)
+                val layoutParams = FrameLayout.LayoutParams(
+                    SPINNER_WIDTH,
+                    SPINNER_HEIGHT,
+                    Gravity.CENTER
+                )
                 progressBar.layoutParams = layoutParams
             }
             return progressBar
