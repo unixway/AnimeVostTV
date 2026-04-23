@@ -17,12 +17,22 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
+import lv.zakon.tv.animevost.sync.DriveAuthProvider
+import lv.zakon.tv.animevost.sync.DriveFileRepository
+import lv.zakon.tv.animevost.sync.DriveSyncManager
+import lv.zakon.tv.animevost.sync.PositionEntry
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
@@ -39,6 +49,8 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
 
     private var videoUrls: List<String>? = null
     private var currentSourceIndex = 0
+
+    private lateinit var driveSyncManager: DriveSyncManager
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_player, container, false)
@@ -64,6 +76,23 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
         }
 
         player!!.addListener(this)
+
+        // Initialize DriveSyncManager
+        try {
+            val httpClient = HttpClient(CIO) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true })
+                }
+                defaultRequest {
+                    url("https://www.googleapis.com/")
+                }
+            }
+            val authProvider = DriveAuthProvider(requireContext())
+            val driveRepo = DriveFileRepository(authProvider, httpClient)
+            driveSyncManager = DriveSyncManager(requireContext(), driveRepo, AppPrefs)
+        } catch (e: Exception) {
+            Log.e("Player", "Failed to initialize DriveSyncManager", e)
+        }
 
         loadSourcesAndPlay()
     }
@@ -164,6 +193,19 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
                     player.currentPosition,
                     percent
                 )
+
+                // Schedule Drive upload after position saved
+                if (::driveSyncManager.isInitialized) {
+                    driveSyncManager.schedulePositionUpload(
+                        episodeId = videoDesc.id.toString(),
+                        entry = PositionEntry(
+                            storedPosition = player.currentPosition.toInt(),
+                            watchedPercent = percent.toInt(),
+                            timestamp = System.currentTimeMillis()
+                        ),
+                        seriesPageUrl = movieSeriesPageInfo.info.pageUrl
+                    )
+                }
             }
         }
     }

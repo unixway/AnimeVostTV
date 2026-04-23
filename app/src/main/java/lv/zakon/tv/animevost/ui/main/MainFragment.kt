@@ -36,10 +36,16 @@ import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import lv.zakon.tv.animevost.ui.CardPresenter
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
@@ -47,6 +53,9 @@ import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.MovieGenre
 import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
+import lv.zakon.tv.animevost.sync.DriveAuthProvider
+import lv.zakon.tv.animevost.sync.DriveFileRepository
+import lv.zakon.tv.animevost.sync.DriveSyncManager
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.isIt
 import lv.zakon.tv.animevost.ui.search.SearchActivity
 import java.util.concurrent.CountDownLatch
@@ -87,6 +96,29 @@ class MainFragment : BrowseSupportFragment() {
         addLog("ЗАПУСК: AnimeVostTV $version")
 
         loadData()
+
+        // Drive sync: parallel coroutine, does not block loadData or CountDownLatch
+        lifecycleScope.launch {
+            try {
+                val httpClient = HttpClient(CIO) {
+                    install(ContentNegotiation) {
+                        json(Json { ignoreUnknownKeys = true })
+                    }
+                    defaultRequest {
+                        url("https://www.googleapis.com/")
+                    }
+                }
+                val authProvider = DriveAuthProvider(requireContext())
+                val driveRepo = DriveFileRepository(authProvider, httpClient)
+                val driveSyncManager = DriveSyncManager(requireContext(), driveRepo, AppPrefs)
+
+                driveSyncManager.syncOnAppStart { status ->
+                    addLog("Drive: $status")
+                }
+            } catch (e: Exception) {
+                addLog("Drive: Ошибка инициализации (${e.message})")
+            }
+        }
     }
 
     private fun addLog(msg: String) {
