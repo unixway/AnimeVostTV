@@ -8,6 +8,7 @@ import com.s_h_y_a.kotlindatastore.pref.stringSetFlowPref
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import lv.zakon.tv.animevost.sync.PositionEntry
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -16,6 +17,7 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
     val recent by stringSetFlowPref(key = "recentA")
     val cachedMovie by jsonFlowPref(mapOf(), "cachedD", MapLongStringDeser())
     val watchedEps by jsonFlowPref(mapOf(), "watchedE", MapLongMapLongPairLongByteDeser())
+    val syncPositions by jsonFlowPref(mapOf(), "syncPositions", SyncPositionsDeser())
 
     suspend fun addSearch(search: String) {
         val searchesSoFar = searches.first()
@@ -58,6 +60,47 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
                 })
             watchedEps.emit(mutateWatched)
         }
+    }
+
+    suspend fun getAllWatchedEpisodes(): Map<String, PositionEntry> = withContext(Dispatchers.Default) {
+        val watched = watchedEps.first()
+        val result = mutableMapOf<String, PositionEntry>()
+        val currentTimestamp = System.currentTimeMillis()
+        watched.values.forEach { episodeMap ->
+            episodeMap.forEach { (episodeId, pair) ->
+                val key = episodeId.toString()
+                result[key] = PositionEntry(
+                    storedPosition = pair.first.toInt(),
+                    watchedPercent = pair.second.toInt(),
+                    timestamp = currentTimestamp
+                )
+            }
+        }
+        result
+    }
+
+    suspend fun mergeWatchedEpisodes(remotePositions: Map<String, PositionEntry>) = withContext(Dispatchers.IO) {
+        if (remotePositions.isEmpty()) return@withContext
+        
+        val localPositions = syncPositions.first().toMutableMap()
+        
+        remotePositions.forEach { (episodeId, remoteEntry) ->
+            val localEntry = localPositions[episodeId]
+            
+            val shouldUpdate = when {
+                localEntry == null -> true
+                remoteEntry.watchedPercent > localEntry.watchedPercent -> true
+                remoteEntry.watchedPercent == localEntry.watchedPercent && 
+                    remoteEntry.storedPosition > localEntry.storedPosition -> true
+                else -> false
+            }
+            
+            if (shouldUpdate) {
+                localPositions[episodeId] = remoteEntry
+            }
+        }
+        
+        syncPositions.emit(localPositions)
     }
 
     private fun <KT, VT, V> KotlinDataStoreModel<V>.jsonFlowPref(
@@ -117,6 +160,30 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
                     Pair(getLong(0), getLong(1).toByte())
                 }}
                 result[it.toLong()] = res
+            }
+            return result
+        }
+    }
+
+    class SyncPositionsDeser : JSONDeser<String, PositionEntry> {
+        override fun toJSON(value: Map<String, PositionEntry>): JSONObject =
+            JSONObject(value.map { (key, entry) ->
+                Pair(key, JSONObject().apply {
+                    put("storedPosition", entry.storedPosition)
+                    put("watchedPercent", entry.watchedPercent)
+                    put("timestamp", entry.timestamp)
+                })
+            }.toMap())
+
+        override fun fromJSON(serialized: JSONObject): Map<String, PositionEntry> {
+            val result = mutableMapOf<String, PositionEntry>()
+            serialized.keys().forEach { key ->
+                val entryObj = serialized.getJSONObject(key)
+                result[key] = PositionEntry(
+                    storedPosition = entryObj.getInt("storedPosition"),
+                    watchedPercent = entryObj.getInt("watchedPercent"),
+                    timestamp = entryObj.getLong("timestamp")
+                )
             }
             return result
         }

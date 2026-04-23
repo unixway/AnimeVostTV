@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 // Загружаем local.properties
@@ -74,4 +75,6 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.exoplayer)
     implementation(libs.media3.ui)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }
