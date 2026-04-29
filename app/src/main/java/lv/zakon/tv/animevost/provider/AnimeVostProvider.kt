@@ -161,7 +161,10 @@ class AnimeVostProvider private constructor() {
             val dataLine = it.data().lines().find { line -> line.contains("var data = ") } ?: ""
             if (dataLine.isNotEmpty()) {
                 val jsonPart = dataLine.substringAfter("var data = ").substringBeforeLast(";")
-                val cleanedJson = jsonPart.trim().removeSuffix(",")
+                var cleanedJson = jsonPart.trim()
+                if (cleanedJson.endsWith(",}")) {
+                    cleanedJson = cleanedJson.removeSuffix(",}") + "}"
+                }
                 if (cleanedJson.isNotEmpty() && cleanedJson != "{}") {
                     try {
                         val videosJson = JSONObject(cleanedJson)
