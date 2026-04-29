@@ -35,6 +35,7 @@ import lv.zakon.tv.animevost.ui.playback.PlaybackActivity
 import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.ui.common.Util
+import lv.zakon.tv.animevost.ui.playback.PlayNextIteratorBridge
 import kotlin.math.roundToInt
 
 class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSupportFragment() {
@@ -112,6 +113,10 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
         }
     }
 
+    private fun preparePlayNextIterator(id: Long) {
+        PlayNextIteratorBridge.prepare(mPlaylistAdapter.unmodifiableList(), id)
+    }
+
     // Метод для динамического добавления связанных серий
     fun addRelatedSeries(info: MovieSeriesInfo) {
         if (relatedRowAdapter == null) {
@@ -171,6 +176,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
             intent.putExtra(DetailsActivity.MOVIE_SERIES_DETAILS, details)
             action as FatAction
             intent.putExtra(DetailsActivity.PLAY_DESC, action.entry)
+            preparePlayNextIterator(action.entry.id)
             startActivity(intent)
         }
         mPresenterSelector.addClassPresenter(DetailsOverviewRow::class.java, detailsPresenter)
@@ -203,6 +209,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
                     val intent = Intent(requireContext(), PlaybackActivity::class.java)
                     intent.putExtra(DetailsActivity.MOVIE_SERIES_DETAILS, details)
                     intent.putExtra(DetailsActivity.PLAY_DESC, item)
+                    preparePlayNextIterator(item.id)
                     startActivity(intent)
                 }
             }
