@@ -12,9 +12,7 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.leanback.app.BackgroundManager
@@ -34,11 +32,13 @@ import androidx.leanback.widget.ListRow
 import androidx.lifecycle.lifecycleScope
 
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.ui.CardPresenter
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
@@ -49,7 +49,6 @@ import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.isIt
 import lv.zakon.tv.animevost.ui.search.SearchActivity
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -63,6 +62,7 @@ class MainFragment : BrowseSupportFragment() {
     private lateinit var mBounds: Rect
     private var mBackgroundTimer: Timer? = null
     private var mBackgroundUri: String? = null
+    private var mLastLoadedUri: String? = null
     private var cardPresenter: CardPresenter? = null
     private lateinit var mRowsAdapter: ArrayObjectAdapter
 
@@ -126,7 +126,10 @@ class MainFragment : BrowseSupportFragment() {
         isHeadersTransitionOnBackEnabled = true
 
         brandColor = ContextCompat.getColor(requireContext(), R.color.fastlane_background)
-        searchAffordanceColor = ContextCompat.getColor(requireContext(), R.color.search_opaque)
+
+        // Стандартный ярко-синий цвет для голосового поиска на Android TV.
+        // Это автоматически меняет иконку Orb на микрофон в Leanback.
+        searchAffordanceColor = ContextCompat.getColor(requireContext(), androidx.leanback.R.color.lb_speech_orb_not_recording)
 
         mRowsAdapter = ArrayObjectAdapter(ListRowPresenter())
         adapter = mRowsAdapter
@@ -136,14 +139,14 @@ class MainFragment : BrowseSupportFragment() {
     private fun loadData() {
         addLog("СИСТЕМА: Запуск очередей загрузки...")
 
-        val barrier = CountDownLatch(2 + MovieGenre.entries.size)
+        val barrier = MutableStateFlow(0)
 
         // 1. Недавние
         lifecycleScope.launch {
             try {
                 val recentIds = AppPrefs.recent.first()
                 if (recentIds.isEmpty()) {
-                    barrier.countDown()
+                    barrier.update { it + 1}
                     return@launch
                 }
 
@@ -162,7 +165,7 @@ class MainFragment : BrowseSupportFragment() {
                     }
                 }
                 addLog("Недавние: [Сеть]: Запросил инфо по истории (${reversedIds.size} шт.)")
-                barrier.countDown()
+                barrier.update { it + 1}
 
                 var recentAdapter: ArrayObjectAdapter? = null
                 for (deferred in deferreds) {
@@ -188,7 +191,7 @@ class MainFragment : BrowseSupportFragment() {
             try {
                 val series = AnimeVostProvider.instance.getMovieSeriesList { status ->
                     if (status.contains("Запрос")){
-                        barrier.countDown()
+                        barrier.update { it + 1}
                     }
                     addLog("Последние: $status")
                 }
@@ -212,7 +215,7 @@ class MainFragment : BrowseSupportFragment() {
                 try {
                     val series = AnimeVostProvider.instance.getMovieSeriesListByCategory(genre) { status ->
                         if (status.contains("Запрос")){
-                            barrier.countDown()
+                            barrier.update { it + 1}
                         }
                         // Логируем только важные этапы для каждого жанра
 
@@ -235,8 +238,8 @@ class MainFragment : BrowseSupportFragment() {
             }
         }
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            barrier.await()
+        lifecycleScope.launch {
+            barrier.first { it >= 2 + MovieGenre.entries.size }
             addLog("Ожидание ответов")
         }
     }
@@ -289,6 +292,9 @@ class MainFragment : BrowseSupportFragment() {
         override fun onItemSelected(itemViewHolder: Presenter.ViewHolder?, item: Any?,
                                     rowViewHolder: RowPresenter.ViewHolder, row: Row) {
             if (item is MovieSeriesInfo) {
+                // Если аниме то же самое, не перезапускаем таймер и фон
+                if (item.cardImageUrl == mLastLoadedUri) return
+
                 mBackgroundUri = item.cardImageUrl
                 startBackgroundTimer()
 
@@ -337,12 +343,16 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun updateBackground(uri: String?) {
+        if (uri == null || uri == mLastLoadedUri) return
+        mLastLoadedUri = uri
+
         val width = mBounds.width()
         val height = mBounds.height()
-        Glide.with(requireContext())
+
+        Glide.with(this)
                 .load(uri)
                 .centerCrop()
-                .error(mDefaultBackground)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .into<CustomTarget<Drawable>>(
                         object : CustomTarget<Drawable>(width, height) {
                             override fun onResourceReady(drawable: Drawable,
@@ -350,7 +360,7 @@ class MainFragment : BrowseSupportFragment() {
                                 mBackgroundManager.drawable = drawable
                             }
                             override fun onLoadCleared(placeholder: Drawable?) {
-                                mBackgroundManager.drawable = null
+                                // Оставляем фон как есть, не сбрасываем в серый
                             }
                         })
         mBackgroundTimer?.cancel()
