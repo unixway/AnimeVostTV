@@ -15,7 +15,7 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
     val searches by stringSetFlowPref(setOf("isekai", "academia", "iruma"), key = "searches")
     val recent by stringSetFlowPref(key = "recentA")
     val cachedMovie by jsonFlowPref(mapOf(), "cachedD", MapLongStringDeser())
-    val watchedEps by jsonFlowPref(mapOf(), "watchedE", MapLongMapLongPairLongByteDeser())
+    val watchedEps by jsonFlowPref(mapOf(), "watchedE", MapLongMapLongTripleLongByteLongNullableDeser())
 
     suspend fun addSearch(search: String) {
         val searchesSoFar = searches.first()
@@ -27,7 +27,7 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         }
     }
 
-    suspend fun markWatch(id: Long, pageUrl: String, episodeId: Long, position : Long = 0, percent: Byte = 0) = withContext(Dispatchers.IO) {
+    suspend fun markWatch(id: Long, pageUrl: String, episodeId: Long, position: Long = 0, percent: Byte = 0, lastWatchedAt: Long? = null) = withContext(Dispatchers.IO) {
         val recently = recent.first()
         val strId = id.toString()
         if ((strId == recently.lastOrNull()).not()) {
@@ -52,8 +52,8 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         val prePosition = watched[id]?.get(episodeId)?.first
         if (prePosition == null || prePosition < position) {
             val mutateWatched = watched.toMutableMap()
-            mutateWatched.compute(id, fun(_:Long, map: Map<Long, Pair<Long, Byte>>?): Map<Long, Pair<Long,Byte>> =
-                with(Pair(position, percent)) {
+            mutateWatched.compute(id, fun(_:Long, map: Map<Long, Triple<Long, Byte, Long?>>?): Map<Long, Triple<Long, Byte, Long?>> =
+                with(Triple(position, percent, lastWatchedAt)) {
                     map?.toMutableMap()?.also { it[episodeId] = this } ?: mapOf(Pair(episodeId, this))
                 })
             watchedEps.emit(mutateWatched)
@@ -102,20 +102,30 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
         }
     }
 
-    class MapLongMapLongPairLongByteDeser : JSONDeser<Long, Map<Long, Pair<Long,Byte>>> {
-        override fun toJSON(value: Map<Long, Map<Long, Pair<Long,Byte>>>): JSONObject =
+    class MapLongMapLongTripleLongByteLongNullableDeser : JSONDeser<Long, Map<Long, Triple<Long, Byte, Long?>>> {
+        override fun toJSON(value: Map<Long, Map<Long, Triple<Long, Byte, Long?>>>): JSONObject =
             JSONObject(value.map { Pair(it.key.toString(),
-                JSONObject(it.value.map { ep -> Pair(ep.key.toString(),
-                    JSONArray(arrayOf<Number>(ep.value.first, ep.value.second))) }.toMap())) }.toMap())
+                JSONObject(it.value.map { ep ->
+                    val array = if (ep.value.third != null) {
+                        JSONArray(arrayOf<Number>(ep.value.first, ep.value.second, ep.value.third!!))
+                    } else {
+                        JSONArray(arrayOf<Number>(ep.value.first, ep.value.second))
+                    }
+                    Pair(ep.key.toString(), array)
+                }.toMap())) }.toMap())
 
-        override fun fromJSON(serialized: JSONObject): Map<Long, Map<Long, Pair<Long,Byte>>> {
-            val result = LinkedHashMap<Long, Map<Long, Pair<Long, Byte>>>()
+        override fun fromJSON(serialized: JSONObject): Map<Long, Map<Long, Triple<Long, Byte, Long?>>> {
+            val result = LinkedHashMap<Long, Map<Long, Triple<Long, Byte, Long?>>>()
             serialized.keys().forEach {
                 val vMap = serialized.getJSONObject(it)
-                val res = mutableMapOf<Long, Pair<Long, Byte>>()
-                vMap.keys().forEach { ep -> res[ep.toLong()] = with(vMap.getJSONArray(ep)) {
-                    Pair(getLong(0), getLong(1).toByte())
-                }}
+                val res = mutableMapOf<Long, Triple<Long, Byte, Long?>>()
+                vMap.keys().forEach { ep ->
+                    val arr = vMap.getJSONArray(ep)
+                    val position = arr.getLong(0)
+                    val percent = arr.getLong(1).toByte()
+                    val lastWatchedAt = if (arr.length() >= 3) arr.getLong(2) else null
+                    res[ep.toLong()] = Triple(position, percent, lastWatchedAt)
+                }
                 result[it.toLong()] = res
             }
             return result

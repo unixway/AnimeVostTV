@@ -241,7 +241,8 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
                 movieSeriesPageInfo.info.pageUrl,
                 id,
                 safePos,
-                percent
+                percent,
+                System.currentTimeMillis()
             )
         }
     }
