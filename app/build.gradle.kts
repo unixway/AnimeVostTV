@@ -58,6 +58,10 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    packagingOptions {
+        resources.excludes += "META-INF/DEPENDENCIES"
+    }
 }
 
 dependencies {
@@ -74,4 +78,7 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.exoplayer)
     implementation(libs.media3.ui)
+    implementation("com.google.api-client:google-api-client-android:2.2.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
 }
