@@ -36,6 +36,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -281,16 +282,18 @@ class MainFragment : BrowseSupportFragment() {
 
             if (seriesIdToPageUrl.isEmpty()) return
 
-            // Async fetch MovieSeriesInfo per seriesId
-            val seriesIdToInfo = seriesIdToPageUrl.map { (seriesId, pageUrl) ->
-                async {
-                    try {
-                        seriesId to AnimeVostProvider.instance.getMovieSeriesInfo(pageUrl)
-                    } catch (e: Exception) {
-                        null
+            // Async fetch MovieSeriesInfo per seriesId (wrapped in coroutineScope for structured concurrency)
+            val seriesIdToInfo = coroutineScope {
+                seriesIdToPageUrl.map { (seriesId, pageUrl) ->
+                    async {
+                        try {
+                            seriesId to AnimeVostProvider.instance.getMovieSeriesInfo(pageUrl)
+                        } catch (e: Exception) {
+                            null
+                        }
                     }
-                }
-            }.mapNotNull { it.await() }.toMap()
+                }.mapNotNull { it.await() }.toMap()
+            }
 
             if (seriesIdToInfo.isEmpty()) return
 
@@ -312,7 +315,7 @@ class MainFragment : BrowseSupportFragment() {
 
             // Create row and insert at index 0
             val adapter = ArrayObjectAdapter(ContinueWatchingCardPresenter())
-            adapter.addAll(items)
+            adapter.addAll(0, items)
             val row = ListRow(HeaderItem(-1L, getString(R.string.continue_watching)), adapter)
             insertRowSorted(row)
 
