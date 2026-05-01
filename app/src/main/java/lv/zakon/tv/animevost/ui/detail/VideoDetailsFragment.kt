@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
 import android.graphics.drawable.Drawable
+import android.util.Log
 import androidx.leanback.app.DetailsSupportFragment
 import androidx.leanback.app.BackgroundManager
 import androidx.leanback.widget.Action
@@ -24,10 +25,12 @@ import androidx.leanback.widget.Row
 import androidx.leanback.widget.RowPresenter
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import kotlinx.coroutines.launch
 import lv.zakon.tv.animevost.ui.CardPresenter
 import lv.zakon.tv.animevost.model.MovieSeriesInfo
 import lv.zakon.tv.animevost.model.MovieSeriesPageInfo
@@ -36,6 +39,11 @@ import lv.zakon.tv.animevost.R
 import lv.zakon.tv.animevost.model.PlayEntry
 import lv.zakon.tv.animevost.ui.common.Util
 import lv.zakon.tv.animevost.ui.playback.PlayNextIteratorBridge
+import lv.zakon.tv.animevost.sync.DriveSyncManager
+import lv.zakon.tv.animevost.sync.SyncLogEntry
+import lv.zakon.tv.animevost.sync.SyncEventType
+import lv.zakon.tv.animevost.prefs.AppPrefs
+import java.util.UUID
 import kotlin.math.roundToInt
 
 class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSupportFragment() {
@@ -50,6 +58,10 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     private lateinit var mPlaylistAdapter: ArrayObjectAdapter
     private lateinit var mActionAdapter: ArrayObjectAdapter
     private var relatedRowAdapter: ArrayObjectAdapter? = null
+
+    private val driveSyncManager: DriveSyncManager by lazy {
+        DriveSyncManager(requireContext().applicationContext, AppPrefs)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +82,25 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
         mSelectedMovie?.cardImageUrl?.let { updateBackground(it) }
 
         onItemViewClickedListener = ItemViewClickedListener()
+
+        // Fire-and-forget sync append for RECENT_ADD after series details are initialized
+        lifecycleScope.launch {
+            val result = driveSyncManager.appendLogEntry(
+                SyncLogEntry(
+                    entryId = UUID.randomUUID().toString(),
+                    timestamp = System.currentTimeMillis(),
+                    eventType = SyncEventType.RECENT_ADD,
+                    seriesId = details.info.id.toString(),
+                    episodeId = null,
+                    storedPosition = null,
+                    watchedPercent = null,
+                    seriesTitle = details.info.title
+                )
+            )
+            result.onFailure { e ->
+                Log.e(TAG, "Sync append failed", e)
+            }
+        }
     }
 
     private fun prepareBackgroundManager() {
@@ -217,6 +248,7 @@ class VideoDetailsFragment(private val details: MovieSeriesPageInfo) : DetailsSu
     }
 
     companion object {
+        private const val TAG = "VideoDetailsFragment"
         private const val DETAIL_THUMB_WIDTH = 274
         private const val DETAIL_THUMB_HEIGHT = 384
     }

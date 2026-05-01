@@ -12,9 +12,11 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.leanback.app.BackgroundManager
 import androidx.leanback.app.BrowseSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -49,6 +51,7 @@ import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.isIt
 import lv.zakon.tv.animevost.ui.search.SearchActivity
+import lv.zakon.tv.animevost.sync.DriveSyncManager
 import java.util.concurrent.TimeUnit
 
 /**
@@ -73,20 +76,39 @@ class MainFragment : BrowseSupportFragment() {
     private var mLogText: TextView? = null
     private var mLogContainer: View? = null
 
+    private var syncErrorShown: Boolean = false
+
+    private val driveSyncManager: DriveSyncManager by lazy {
+        DriveSyncManager(requireContext().applicationContext, AppPrefs)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        prepareBackgroundManager()
-        setupUIElements()
-        setupEventListeners()
+        lifecycleScope.launch {
+            // Blocking downloadAndMergeLog call before any UI setup
+            val mergeResult = driveSyncManager.downloadAndMergeLog()
+            mergeResult.onFailure { e ->
+                Log.e(TAG, "Sync merge failed, using local data", e)
+                if (!syncErrorShown) {
+                    syncErrorShown = true
+                    Toast.makeText(context, "Sync unavailable", Toast.LENGTH_SHORT).show()
+                }
+            }
 
-        mLogText = requireActivity().findViewById(R.id.log_text)
-        mLogContainer = requireActivity().findViewById(R.id.log_container)
+            // Proceed with normal fragment setup after merge (success or failure)
+            prepareBackgroundManager()
+            setupUIElements()
+            setupEventListeners()
 
-        val version = getString(R.string.app_version)
-        addLog("ЗАПУСК: AnimeVostTV $version")
+            mLogText = requireActivity().findViewById(R.id.log_text)
+            mLogContainer = requireActivity().findViewById(R.id.log_container)
 
-        loadData()
+            val version = getString(R.string.app_version)
+            addLog("ЗАПУСК: AnimeVostTV $version")
+
+            loadData()
+        }
     }
 
     private fun addLog(msg: String) {

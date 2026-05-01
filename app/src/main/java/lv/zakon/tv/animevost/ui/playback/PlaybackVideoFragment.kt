@@ -29,6 +29,10 @@ import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifData
 import lv.zakon.tv.animevost.ui.detail.DetailsActivity
 import androidx.core.net.toUri
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.ifc
+import lv.zakon.tv.animevost.sync.DriveSyncManager
+import lv.zakon.tv.animevost.sync.SyncLogEntry
+import lv.zakon.tv.animevost.sync.SyncEventType
+import java.util.UUID
 
 /** Handles video playback with media controls. */
 class PlaybackVideoFragment : Fragment(), Player.Listener {
@@ -42,6 +46,10 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
     private var videoUrls: List<String>? = null
     private var currentSourceIndex = 0
     private var lastDuration: Long = 0
+
+    private val driveSyncManager: DriveSyncManager by lazy {
+        DriveSyncManager(requireContext().applicationContext, AppPrefs)
+    }
 
     // Задача для периодического сохранения прогресса
     private val updateProgressAction = object : Runnable {
@@ -243,6 +251,25 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
                 safePos,
                 percent
             )
+
+            // Fire-and-forget sync append after AppPrefs.markWatch
+            lifecycleScope.launch {
+                val result = driveSyncManager.appendLogEntry(
+                    SyncLogEntry(
+                        entryId = UUID.randomUUID().toString(),
+                        timestamp = System.currentTimeMillis(),
+                        eventType = SyncEventType.PLAY_PROGRESS,
+                        seriesId = movieSeriesPageInfo.info.id.toString(),
+                        episodeId = id.toString(),
+                        storedPosition = safePos.toInt(),
+                        watchedPercent = percent.toInt(),
+                        seriesTitle = null
+                    )
+                )
+                result.onFailure { e ->
+                    Log.e(TAG, "Sync append failed", e)
+                }
+            }
         }
     }
 
@@ -251,5 +278,9 @@ class PlaybackVideoFragment : Fragment(), Player.Listener {
         view?.removeCallbacks(updateProgressAction)
         player?.release()
         player = null
+    }
+
+    companion object {
+        private const val TAG = "PlaybackVideoFragment"
     }
 }
