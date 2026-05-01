@@ -95,8 +95,8 @@ class SyncLogBuffer(private val context: Context) {
             val jsonArray = JSONArray(jsonString)
             inMemoryList.clear()
             for (i in 0 until jsonArray.length()) {
-                val entryJson = jsonArray.getString(i)
-                val entry = SyncLogEntry.fromJson(entryJson)
+                val entryJsonObject = jsonArray.getJSONObject(i)
+                val entry = SyncLogEntry.fromJson(entryJsonObject)
                 inMemoryList.add(entry)
             }
             loaded = true
