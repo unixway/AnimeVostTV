@@ -49,6 +49,7 @@ import lv.zakon.tv.animevost.prefs.AppPrefs
 import lv.zakon.tv.animevost.provider.AnimeVostProvider
 import lv.zakon.tv.animevost.ui.common.Util.IfExt.isIt
 import lv.zakon.tv.animevost.ui.search.SearchActivity
+import lv.zakon.tv.animevost.ui.playback.PlaybackActivity
 import java.util.concurrent.TimeUnit
 
 /**
@@ -140,6 +141,11 @@ class MainFragment : BrowseSupportFragment() {
         addLog("СИСТЕМА: Запуск очередей загрузки...")
 
         val barrier = MutableStateFlow(0)
+
+        // 0. Продолжить просмотр
+        lifecycleScope.launch {
+            loadContinueWatchingRow()
+        }
 
         // 1. Недавние
         lifecycleScope.launch {
@@ -244,6 +250,77 @@ class MainFragment : BrowseSupportFragment() {
         }
     }
 
+    private suspend fun loadContinueWatchingRow() {
+        try {
+            val watchedEps = AppPrefs.watchedEps.first()
+            val cachedMovies = AppPrefs.cachedMovie.first()
+
+            // Flatten watchedEps to list of (seriesId, episodeId, position, percent, lastWatchedAt)
+            val allEntries = watchedEps.flatMap { (seriesId, episodeMap) ->
+                episodeMap.map { (episodeId, triple) ->
+                    val (position, percent, lastWatchedAt) = triple
+                    Triple(seriesId, episodeId, Triple(position, percent, lastWatchedAt))
+                }
+            }
+
+            // Filter: percent > 0 && percent < 95 && lastWatchedAt != null
+            val filtered = allEntries.filter { (_, _, triple) ->
+                val (_, percent, lastWatchedAt) = triple
+                val percentInt = percent.toInt()
+                percentInt > 0 && percentInt < 95 && lastWatchedAt != null
+            }
+
+            if (filtered.isEmpty()) return
+
+            // Group by seriesId and fetch metadata
+            val seriesIdToPageUrl = filtered.map { (seriesId, _, _) -> seriesId }.distinct()
+                .mapNotNull { seriesId ->
+                    val pageUrl = cachedMovies[seriesId]
+                    if (pageUrl != null) seriesId to pageUrl else null
+                }.toMap()
+
+            if (seriesIdToPageUrl.isEmpty()) return
+
+            // Async fetch MovieSeriesInfo per seriesId
+            val seriesIdToInfo = seriesIdToPageUrl.map { (seriesId, pageUrl) ->
+                async {
+                    try {
+                        seriesId to AnimeVostProvider.instance.getMovieSeriesInfo(pageUrl)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            }.mapNotNull { it.await() }.toMap()
+
+            if (seriesIdToInfo.isEmpty()) return
+
+            // Build ContinueWatchingItem list
+            val items = filtered.mapNotNull { (seriesId, episodeId, triple) ->
+                val (position, percent, lastWatchedAt) = triple
+                val movieInfo = seriesIdToInfo[seriesId] ?: return@mapNotNull null
+                ContinueWatchingItem(
+                    seriesId = seriesId,
+                    episodeId = episodeId,
+                    movieInfo = movieInfo,
+                    watchedPercent = percent.toInt(),
+                    storedPosition = position,
+                    lastWatchedAt = lastWatchedAt!!
+                )
+            }.sortedByDescending { it.lastWatchedAt }
+
+            if (items.isEmpty()) return
+
+            // Create row and insert at index 0
+            val adapter = ArrayObjectAdapter(ContinueWatchingCardPresenter())
+            adapter.addAll(items)
+            val row = ListRow(HeaderItem(-1L, getString(R.string.continue_watching)), adapter)
+            insertRowSorted(row)
+
+        } catch (e: Exception) {
+            // Silent failure — row not added
+        }
+    }
+
     private fun insertRowSorted(newRow: ListRow) {
         val newId = newRow.headerItem.id
         var index = 0
@@ -274,16 +351,24 @@ class MainFragment : BrowseSupportFragment() {
                 rowViewHolder: RowPresenter.ViewHolder,
                 row: Row) {
 
-            if (item is MovieSeriesInfo) {
-                val intent = Intent(requireContext(), DetailsActivity::class.java)
-                intent.putExtra(DetailsActivity.MOVIE, item)
+            when (item) {
+                is ContinueWatchingItem -> {
+                    val intent = Intent(requireContext(), PlaybackActivity::class.java)
+                    intent.putExtra("EPISODE_ID", item.episodeId)
+                    intent.putExtra("STORED_POSITION", item.storedPosition)
+                    startActivity(intent)
+                }
+                is MovieSeriesInfo -> {
+                    val intent = Intent(requireContext(), DetailsActivity::class.java)
+                    intent.putExtra(DetailsActivity.MOVIE, item)
 
-                val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
-                    requireActivity(),
-                    (itemViewHolder.view as ImageCardView).mainImageView!!,
-                    DetailsActivity.SHARED_ELEMENT_NAME
-                ).toBundle()
-                startActivity(intent, bundle)
+                    val bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        requireActivity(),
+                        (itemViewHolder.view as ImageCardView).mainImageView!!,
+                        DetailsActivity.SHARED_ELEMENT_NAME
+                    ).toBundle()
+                    startActivity(intent, bundle)
+                }
             }
         }
     }
