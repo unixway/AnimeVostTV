@@ -8,6 +8,7 @@ import com.s_h_y_a.kotlindatastore.pref.stringSetFlowPref
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import lv.zakon.tv.animevost.sync.SyncLogEntry
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -58,6 +59,16 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
                 })
             watchedEps.emit(mutateWatched)
         }
+    }
+
+    /**
+     * Merges a list of SyncLogEntry instances into local watch state.
+     * Stub implementation — full logic will be added in task-005.
+     *
+     * @param entries List of sync log entries to merge
+     */
+    suspend fun mergeWatchedEpisodes(entries: List<SyncLogEntry>) {
+        // TODO: implemented in task-005
     }
 
     private fun <KT, VT, V> KotlinDataStoreModel<V>.jsonFlowPref(
