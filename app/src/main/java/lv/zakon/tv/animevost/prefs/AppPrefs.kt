@@ -6,8 +6,14 @@ import com.s_h_y_a.kotlindatastore.KotlinDataStoreModel
 import com.s_h_y_a.kotlindatastore.pref.saveAsStringFlowPref
 import com.s_h_y_a.kotlindatastore.pref.stringSetFlowPref
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import lv.zakon.tv.animevost.sync.PlayEntryChangeEvent
+import lv.zakon.tv.animevost.sync.RecentItemChangeEvent
+import lv.zakon.tv.animevost.sync.SyncEventType
+import lv.zakon.tv.animevost.sync.SyncLogEntry
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -16,6 +22,13 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
     val recent by stringSetFlowPref(key = "recentA")
     val cachedMovie by jsonFlowPref(mapOf(), "cachedD", MapLongStringDeser())
     val watchedEps by jsonFlowPref(mapOf(), "watchedE", MapLongMapLongPairLongByteDeser())
+
+    private val _playEntryChanges = MutableSharedFlow<PlayEntryChangeEvent>(replay = 0, extraBufferCapacity = 64)
+    private val _recentItemChanges = MutableSharedFlow<RecentItemChangeEvent>(replay = 0, extraBufferCapacity = 64)
+
+    fun observePlayEntryChanges(): Flow<PlayEntryChangeEvent> = _playEntryChanges
+
+    fun observeRecentItemChanges(): Flow<RecentItemChangeEvent> = _recentItemChanges
 
     suspend fun addSearch(search: String) {
         val searchesSoFar = searches.first()
@@ -40,6 +53,16 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
             }
             mutateRecent.add(strId)
             recent.emit(mutateRecent)
+            
+            val cache = cachedMovie.first()
+            val seriesTitle = cache[id] ?: pageUrl
+            _recentItemChanges.emit(
+                RecentItemChangeEvent(
+                    seriesId = strId,
+                    seriesTitle = seriesTitle,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
         }
         val cache = cachedMovie.first()
         if (cache.contains(id).not()) {
@@ -57,6 +80,85 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
                     map?.toMutableMap()?.also { it[episodeId] = this } ?: mapOf(Pair(episodeId, this))
                 })
             watchedEps.emit(mutateWatched)
+            
+            _playEntryChanges.emit(
+                PlayEntryChangeEvent(
+                    seriesId = id.toString(),
+                    episodeId = episodeId.toString(),
+                    storedPosition = position.toInt(),
+                    watchedPercent = percent.toInt(),
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    suspend fun mergeWatchedEpisodes(entries: List<SyncLogEntry>) = withContext(Dispatchers.IO) {
+        val playProgressEntries = entries.filter { it.eventType == SyncEventType.PLAY_PROGRESS }
+        if (playProgressEntries.isEmpty()) return@withContext
+
+        val watched = watchedEps.first()
+        val mutateWatched = watched.toMutableMap()
+        var modified = false
+
+        for (entry in playProgressEntries) {
+            val seriesIdLong = entry.seriesId.toLongOrNull() ?: continue
+            val episodeIdLong = entry.episodeId?.toLongOrNull() ?: continue
+            val entryPosition = entry.storedPosition ?: continue
+            val entryPercent = entry.watchedPercent ?: 0
+
+            val currentPosition = watched[seriesIdLong]?.get(episodeIdLong)?.first
+            if (currentPosition == null || entryPosition.toLong() > currentPosition) {
+                mutateWatched.compute(seriesIdLong) { _, map ->
+                    val updatedMap = map?.toMutableMap() ?: mutableMapOf()
+                    updatedMap[episodeIdLong] = Pair(entryPosition.toLong(), entryPercent.toByte())
+                    updatedMap
+                }
+                modified = true
+            }
+        }
+
+        if (modified) {
+            watchedEps.emit(mutateWatched)
+        }
+    }
+
+    suspend fun mergeRecentItems(entries: List<SyncLogEntry>) = withContext(Dispatchers.IO) {
+        val recentAddEntries = entries.filter { it.eventType == SyncEventType.RECENT_ADD }
+        if (recentAddEntries.isEmpty()) return@withContext
+
+        val deduplicated = recentAddEntries
+            .groupBy { it.seriesId }
+            .mapValues { (_, group) -> group.maxByOrNull { it.timestamp }!! }
+            .values
+            .sortedByDescending { it.timestamp }
+
+        val recentSet = recent.first().toMutableSet()
+        val cache = cachedMovie.first().toMutableMap()
+        var recentModified = false
+        var cacheModified = false
+
+        for (entry in deduplicated) {
+            val seriesIdLong = entry.seriesId.toLongOrNull() ?: continue
+            val strId = entry.seriesId
+
+            if (recentSet.contains(strId)) {
+                recentSet.remove(strId)
+            }
+            recentSet.add(strId)
+            recentModified = true
+
+            if (!cache.contains(seriesIdLong) && entry.seriesTitle != null) {
+                cache[seriesIdLong] = entry.seriesTitle
+                cacheModified = true
+            }
+        }
+
+        if (recentModified) {
+            recent.emit(recentSet)
+        }
+        if (cacheModified) {
+            cachedMovie.emit(cache)
         }
     }
 
