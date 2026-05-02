@@ -20,16 +20,23 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AnimeVostTV">
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.splash.SplashActivity"
             android:banner="@drawable/animevost_logo"
             android:exported="true"
-            android:screenOrientation="landscape">
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.AnimeVostTV.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
+                <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:banner="@drawable/animevost_logo"
+            android:exported="true"
+            android:screenOrientation="landscape" />
         <activity
             android:name=".ui.search.SearchActivity"
             android:exported="false" />
