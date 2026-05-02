@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base application theme -->
+    <style name="Theme.AnimeVostTV" parent="Theme.Leanback">
+        <!-- Customize your theme here -->
+    </style>
+
     <!-- Fullscreen theme for SplashActivity -->
     <style name="Theme.AnimeVostTV.Fullscreen" parent="Theme.AnimeVostTV">
         <item name="android:windowFullscreen">true</item>
