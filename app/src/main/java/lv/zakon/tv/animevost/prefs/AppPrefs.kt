@@ -16,6 +16,29 @@ object AppPrefs : KotlinDataStoreModel<AppPrefs>() {
     val recent by stringSetFlowPref(key = "recentA")
     val cachedMovie by jsonFlowPref(mapOf(), "cachedD", MapLongStringDeser())
     val watchedEps by jsonFlowPref(mapOf(), "watchedE", MapLongMapLongPairLongByteDeser())
+    val splashPosterCache by saveAsStringFlowPref(
+        emptyList(),
+        key = "splashPosterCache",
+        object : DataStorePrefDataConverter<List<String>, String> {
+            override suspend fun encode(value: List<String>?) = withContext(Dispatchers.Default) {
+                value?.let {
+                    JSONArray(value).toString()
+                } ?: "[]"
+            }
+
+            override suspend fun decode(savedValue: String?, defaultValue: List<String>): List<String> = withContext(Dispatchers.Default) {
+                if (savedValue == null) {
+                    return@withContext defaultValue
+                }
+                val jsonArray = JSONArray(savedValue)
+                val result = mutableListOf<String>()
+                for (i in 0 until jsonArray.length()) {
+                    result.add(jsonArray.getString(i))
+                }
+                result
+            }
+        }
+    )
 
     suspend fun addSearch(search: String) {
         val searchesSoFar = searches.first()
